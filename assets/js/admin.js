@@ -6467,7 +6467,7 @@ console.log('admin.js file loaded - v1.0.1');
             if (helpdesk.guideCategories && helpdesk.guideCategories.length > 0) {
                 let typeHtml = '<option value="">-- Vyberte typ --</option>';
                 helpdesk.guideCategories.forEach(function(cat) {
-                    typeHtml += '<option value="' + cat.kategoria + '">' + cat.kategoria + '</option>';
+                    typeHtml += '<option value="' + cat.nazov + '">' + cat.nazov + '</option>';
                 });
                 $('#link-typ').html(typeHtml);
             }
@@ -6507,7 +6507,7 @@ console.log('admin.js file loaded - v1.0.1');
                         if (helpdesk.guideCategories && helpdesk.guideCategories.length > 0) {
                             let typeHtml = '<option value="">-- Vyberte typ --</option>';
                             helpdesk.guideCategories.forEach(function(cat) {
-                                typeHtml += '<option value="' + cat.kategoria + '">' + cat.kategoria + '</option>';
+                                typeHtml += '<option value="' + cat.nazov + '">' + cat.nazov + '</option>';
                             });
                             $('#link-typ').html(typeHtml);
                         }

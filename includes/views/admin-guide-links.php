@@ -111,8 +111,8 @@ $categories = GuideCategory::get_all();
                             <option value="">-- <?php echo esc_html__( 'Vyberte typ', HELPDESK_TEXT_DOMAIN ); ?> --</option>
                             <?php if ( ! empty( $categories ) ) : ?>
                                 <?php foreach ( $categories as $category ) : ?>
-                                    <option value="<?php echo esc_attr( $category['kategoria'] ); ?>">
-                                        <?php echo esc_html( $category['kategoria'] ); ?>
+                                    <option value="<?php echo esc_attr( $category['nazov'] ); ?>">
+                                        <?php echo esc_html( $category['nazov'] ); ?>
                                     </option>
                                 <?php endforeach; ?>
                             <?php endif; ?>
