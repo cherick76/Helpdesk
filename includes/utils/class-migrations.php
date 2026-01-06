@@ -79,18 +79,41 @@ class Migrations {
         global $wpdb;
         
         $table = Database::get_bugs_table();
+        
+        // Get current columns
         $columns = $wpdb->get_col( "SHOW COLUMNS FROM $table" );
+        
+        error_log( 'Current columns in ' . $table . ': ' . print_r( $columns, true ) );
         
         // Rename popis to popis_problem
         if ( in_array( 'popis', $columns ) && ! in_array( 'popis_problem', $columns ) ) {
-            $wpdb->query( "ALTER TABLE $table CHANGE COLUMN popis popis_problem LONGTEXT DEFAULT NULL" );
-            error_log( 'Renamed popis column to popis_problem in ' . $table );
+            $result = $wpdb->query( "ALTER TABLE $table CHANGE COLUMN popis popis_problem LONGTEXT DEFAULT NULL" );
+            if ( $result !== false ) {
+                error_log( 'Successfully renamed popis column to popis_problem in ' . $table );
+            } else {
+                error_log( 'Error renaming popis column: ' . $wpdb->last_error );
+            }
         }
         
         // Rename popis_riesenia to popis_riesenie
         if ( in_array( 'popis_riesenia', $columns ) && ! in_array( 'popis_riesenie', $columns ) ) {
-            $wpdb->query( "ALTER TABLE $table CHANGE COLUMN popis_riesenia popis_riesenie LONGTEXT DEFAULT NULL" );
-            error_log( 'Renamed popis_riesenia column to popis_riesenie in ' . $table );
+            $result = $wpdb->query( "ALTER TABLE $table CHANGE COLUMN popis_riesenia popis_riesenie LONGTEXT DEFAULT NULL" );
+            if ( $result !== false ) {
+                error_log( 'Successfully renamed popis_riesenia column to popis_riesenie in ' . $table );
+            } else {
+                error_log( 'Error renaming popis_riesenia column: ' . $wpdb->last_error );
+            }
+        }
+        
+        // Ensure email_1 and email_2 exist
+        if ( ! in_array( 'email_1', $columns ) ) {
+            $wpdb->query( "ALTER TABLE $table ADD COLUMN email_1 LONGTEXT DEFAULT NULL AFTER kod_chyby" );
+            error_log( 'Added email_1 column to ' . $table );
+        }
+        
+        if ( ! in_array( 'email_2', $columns ) ) {
+            $wpdb->query( "ALTER TABLE $table ADD COLUMN email_2 LONGTEXT DEFAULT NULL AFTER email_1" );
+            error_log( 'Added email_2 column to ' . $table );
         }
         
         error_log( 'Popis columns migration completed' );
