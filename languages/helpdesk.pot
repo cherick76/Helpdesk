@@ -1,0 +1,338 @@
+# HelpDesk Plugin Translation File
+# Copyright (C) 2025 HelpDesk Team
+# This file is distributed under the same license as the HelpDesk package.
+
+msgid ""
+msgstr ""
+"Project-Id-Version: HelpDesk 1.0.0\n"
+"Report-Msgid-Bugs-To: https://example.com\n"
+"POT-Creation-Date: 2025-12-17 12:00:00+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: sk_SK\n"
+"X-Generator: Poedit 2.4\n"
+"X-Poedit-Basepath: ..\n"
+"X-Poedit-SearchPath-0: .\n"
+
+#: helpdesk.php
+msgid "HelpDesk"
+msgstr "HelpDesk"
+
+msgid "Modulárny plugin pre správu číselníkov pracovníkov, projektov a chýb v helpdesk prostredí"
+msgstr "Modulárny plugin pre správu číselníkov pracovníkov, projektov a chýb v helpdesk prostredí"
+
+#: includes/admin/class-admin.php
+msgid "Pracovníci"
+msgstr "Pracovníci"
+
+msgid "Projekty"
+msgstr "Projekty"
+
+msgid "Chyby"
+msgstr "Chyby"
+
+msgid "Nastavenia"
+msgstr "Nastavenia"
+
+msgid "Správa HelpDesk modulov"
+msgstr "Správa HelpDesk modulov"
+
+#: includes/views/admin-dashboard.php
+msgid "Vítajte v HelpDesk Plugine"
+msgstr "Vítajte v HelpDesk Plugine"
+
+msgid "Spravujte pracovníkov, projekty a chyby zo svojho WordPress adminu."
+msgstr "Spravujte pracovníkov, projekty a chyby zo svojho WordPress adminu."
+
+msgid "Dostupné moduly"
+msgstr "Dostupné moduly"
+
+msgid "Spravujte zoznam pracovníkov s klapkami a kontaktými informáciami."
+msgstr "Spravujte zoznam pracovníkov s klapkami a kontaktými informáciami."
+
+msgid "Spravujte projekty s priradením pracovníkov a PM manažérom."
+msgstr "Spravujte projekty s priradením pracovníkov a PM manažérom."
+
+msgid "Spravujte chyby a problémy spojené s projektami."
+msgstr "Spravujte chyby a problémy spojené s projektami."
+
+msgid "Otvoriť"
+msgstr "Otvoriť"
+
+#: includes/views/admin-employees.php
+msgid "+ Pridať pracovníka"
+msgstr "+ Pridať pracovníka"
+
+msgid "ID"
+msgstr "ID"
+
+msgid "Meno a Priezvisko"
+msgstr "Meno a Priezvisko"
+
+msgid "Klapka"
+msgstr "Klapka"
+
+msgid "Mobil"
+msgstr "Mobil"
+
+msgid "Akcie"
+msgstr "Akcie"
+
+msgid "Žádní pracovníci nebyli nalezeni."
+msgstr "Žádní pracovníci nebyli nalezeni."
+
+msgid "Upraviť"
+msgstr "Upraviť"
+
+msgid "Zmazať"
+msgstr "Zmazať"
+
+msgid "Pridať pracovníka"
+msgstr "Pridať pracovníka"
+
+msgid "Poznámka"
+msgstr "Poznámka"
+
+msgid "Uložiť"
+msgstr "Uložiť"
+
+msgid "Zrušiť"
+msgstr "Zrušiť"
+
+msgid "Meno a priezvisko je povinné"
+msgstr "Meno a priezvisko je povinné"
+
+msgid "Klapka je povinná"
+msgstr "Klapka je povinná"
+
+msgid "Klapka musí byť 4-miestne číslo"
+msgstr "Klapka musí byť 4-miestne číslo"
+
+msgid "Neplatný formát mobilného čísla"
+msgstr "Neplatný formát mobilného čísla"
+
+msgid "Permission denied"
+msgstr "Prístup zamietnutý"
+
+msgid "Employee not found"
+msgstr "Pracovník nenájdený"
+
+msgid "Klapka already exists"
+msgstr "Klapka už existuje"
+
+msgid "Employee updated successfully"
+msgstr "Pracovník bol úspešne aktualizovaný"
+
+msgid "Employee created successfully"
+msgstr "Pracovník bol úspešne vytvorený"
+
+msgid "Failed to create employee"
+msgstr "Chyba pri vytváraní pracovníka"
+
+msgid "Employee deleted successfully"
+msgstr "Pracovník bol úspešne zmazaný"
+
+msgid "Failed to delete employee"
+msgstr "Chyba pri mazaní pracovníka"
+
+msgid "Invalid employee ID"
+msgstr "Neplatné ID pracovníka"
+
+msgid "Security check failed."
+msgstr "Bezpečnostná kontrola zlyhala."
+
+msgid "Naozaj chcete zmazať tohto pracovníka?"
+msgstr "Naozaj chcete zmazať tohto pracovníka?"
+
+#: includes/views/admin-projects.php
+msgid "+ Pridať projekt"
+msgstr "+ Pridať projekt"
+
+msgid "Číslo Projektu"
+msgstr "Číslo Projektu"
+
+msgid "Zákazník"
+msgstr "Zákazník"
+
+msgid "Žádné projekty nebyly nalezeny."
+msgstr "Žádné projekty nebyly nalezeny."
+
+msgid "Pridať projekt"
+msgstr "Pridať projekt"
+
+msgid "Zákaznícke Číslo"
+msgstr "Zákaznícke Číslo"
+
+msgid "Projektové Číslo"
+msgstr "Projektové Číslo"
+
+msgid "Názov Projektu"
+msgstr "Názov Projektu"
+
+msgid "Podnázov"
+msgstr "Podnázov"
+
+msgid "Servisná Služba"
+msgstr "Servisná Služba"
+
+msgid "SLA"
+msgstr "SLA"
+
+msgid "Servisný Kontrakt"
+msgstr "Servisný Kontrakt"
+
+msgid "PM Manažér"
+msgstr "PM Manažér"
+
+msgid "-- Vybrať --"
+msgstr "-- Vybrať --"
+
+msgid "Zákaznícke číslo je povinné"
+msgstr "Zákaznícke číslo je povinné"
+
+msgid "Zákaznícke číslo musí byť 4-miestne číslo"
+msgstr "Zákaznícke číslo musí byť 4-miestne číslo"
+
+msgid "Názov projektu je povinný"
+msgstr "Názov projektu je povinný"
+
+msgid "Projektové číslo je povinné"
+msgstr "Projektové číslo je povinné"
+
+msgid "Project not found"
+msgstr "Projekt nenájdený"
+
+msgid "Project number already exists"
+msgstr "Číslo projektu už existuje"
+
+msgid "Project updated successfully"
+msgstr "Projekt bol úspešne aktualizovaný"
+
+msgid "Project created successfully"
+msgstr "Projekt bol úspešne vytvorený"
+
+msgid "Failed to create project"
+msgstr "Chyba pri vytváraní projektu"
+
+msgid "Project deleted successfully"
+msgstr "Projekt bol úspešne zmazaný"
+
+msgid "Failed to delete project"
+msgstr "Chyba pri mazaní projektu"
+
+msgid "Invalid project ID"
+msgstr "Neplatné ID projektu"
+
+msgid "Invalid project or employee ID"
+msgstr "Neplatné ID projektu alebo pracovníka"
+
+msgid "Employee added to project"
+msgstr "Pracovník bol pridaný do projektu"
+
+msgid "Employee removed from project"
+msgstr "Pracovník bol odstránený z projektu"
+
+msgid "Naozaj chcete zmazať tento projekt?"
+msgstr "Naozaj chcete zmazať tento projekt?"
+
+#: includes/views/admin-bugs.php
+msgid "+ Pridať chybu"
+msgstr "+ Pridať chybu"
+
+msgid "Dátum"
+msgstr "Dátum"
+
+msgid "Stav"
+msgstr "Stav"
+
+msgid "Projekt"
+msgstr "Projekt"
+
+msgid "Žádné chyby nebyly nalezeny."
+msgstr "Žádné chyby nebyly nalezeny."
+
+msgid "Pridať chybu"
+msgstr "Pridať chybu"
+
+msgid "Názov Chyby"
+msgstr "Názov Chyby"
+
+msgid "Popis"
+msgstr "Popis"
+
+msgid "Pracovník"
+msgstr "Pracovník"
+
+msgid "Nový"
+msgstr "Nový"
+
+msgid "Rozpracovaný"
+msgstr "Rozpracovaný"
+
+msgid "Vyriešený"
+msgstr "Vyriešený"
+
+msgid "Zatvorený"
+msgstr "Zatvorený"
+
+msgid "Názov chyby je povinný"
+msgstr "Názov chyby je povinný"
+
+msgid "Neplatný stav chyby"
+msgstr "Neplatný stav chyby"
+
+msgid "Bug not found"
+msgstr "Chyba nenájdená"
+
+msgid "Bug updated successfully"
+msgstr "Chyba bola úspešne aktualizovaná"
+
+msgid "Bug created successfully"
+msgstr "Chyba bola úspešne vytvorená"
+
+msgid "Failed to create bug"
+msgstr "Chyba pri vytváraní chyby"
+
+msgid "Bug deleted successfully"
+msgstr "Chyba bola úspešne zmazaná"
+
+msgid "Failed to delete bug"
+msgstr "Chyba pri mazaní chyby"
+
+msgid "Invalid bug ID"
+msgstr "Neplatné ID chyby"
+
+msgid "Naozaj chcete zmazať túto chybu?"
+msgstr "Naozaj chcete zmazať túto chybu?"
+
+#: includes/views/admin-settings.php
+msgid "HelpDesk Nastavenia"
+msgstr "HelpDesk Nastavenia"
+
+msgid "Aktívne Moduly"
+msgstr "Aktívne Moduly"
+
+msgid "Informácie"
+msgstr "Informácie"
+
+msgid "O HelpDesk Plugine"
+msgstr "O HelpDesk Plugine"
+
+msgid "Verzia:"
+msgstr "Verzia:"
+
+msgid "Plugin umožňuje správu pracovníkov, projektov a chýb v helpdesk prostredí."
+msgstr "Plugin umožňuje správu pracovníkov, projektov a chýb v helpdesk prostredí."
+
+msgid "Nastavenia boli uložené."
+msgstr "Nastavenia boli uložené."
+
+msgid "Vám sa nepodarilo uložiť nastavenia."
+msgstr "Vám sa nepodarilo uložiť nastavenia."
+
+msgid "You do not have permission to access this page."
+msgstr "Nemáte povolenie na prístup k tejto stránke."
+
+msgid "Hlavný"
+msgstr "Hlavný"

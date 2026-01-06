@@ -1,0 +1,267 @@
+/* HelpDesk Frontend Styles */
+
+/* Core Layout */
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+body {
+    background-color: #f5f5f5;
+}
+
+/* HelpDesk Wrapper */
+.helpdesk-frontend-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    background-color: #f5f5f5;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+/* Header */
+.helpdesk-frontend-header {
+    background-color: #0073aa;
+    color: white;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    flex: 0 0 auto;
+    width: 100%;
+    margin: 0;
+    height: auto;
+}
+
+.helpdesk-logo {
+    display: none;
+}
+
+/* Navigation */
+.helpdesk-frontend-nav {
+    flex: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+}
+
+.helpdesk-frontend-nav ul {
+    list-style: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    height: 100% !important;
+    width: 100% !important;
+    justify-content: flex-start !important;
+}
+
+.helpdesk-frontend-nav li {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.helpdesk-frontend-nav .nav-link {
+    display: block !important;
+    padding: 18px 20px !important;
+    color: white !important;
+    text-decoration: none !important;
+    border-bottom: 3px solid transparent !important;
+    transition: all 0.3s ease !important;
+    font-size: 15px !important;
+    white-space: nowrap !important;
+}
+
+.helpdesk-frontend-nav .nav-link:hover {
+    background-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+.helpdesk-frontend-nav .nav-link.active {
+    border-bottom-color: #fff !important;
+    background-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+/* User info */
+.helpdesk-frontend-nav .nav-user {
+    margin-left: auto !important;
+    padding-right: 15px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    flex: 0 0 auto !important;
+}
+
+.helpdesk-frontend-nav .nav-user span {
+    margin-right: 0 !important;
+    font-size: 13px !important;
+    max-width: 150px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+.helpdesk-frontend-nav .nav-user a {
+    color: white !important;
+    text-decoration: none !important;
+    padding: 6px 12px !important;
+    background-color: rgba(0, 0, 0, 0.2) !important;
+    border-radius: 3px !important;
+    transition: background-color 0.3s ease !important;
+    font-size: 12px !important;
+    white-space: nowrap !important;
+}
+
+.helpdesk-frontend-nav .nav-user a:hover {
+    background-color: rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Container */
+.helpdesk-frontend-container {
+    flex: 1;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+}
+
+/* Sections */
+.helpdesk-section {
+    display: none;
+    height: 100%;
+    flex: 1;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.helpdesk-section.active {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.helpdesk-section-content {
+    background-color: white;
+    border-radius: 0;
+    padding: 30px;
+    box-shadow: none;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    margin: 0;
+    width: 100%;
+}
+
+/* Dashboard */
+.helpdesk-dashboard-wrapper {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 20px !important;
+    margin-bottom: 20px !important;
+    flex: 0 0 auto !important;
+}
+
+.helpdesk-admin-container {
+    margin-top: 0 !important;
+    background-color: #f9f9f9 !important;
+    padding: 15px !important;
+    border-radius: 5px !important;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04) !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+}
+
+.helpdesk-search-input {
+    padding: 10px !important;
+    width: 100% !important;
+    border: 1px solid #ddd !important;
+    border-radius: 3px !important;
+    box-sizing: border-box !important;
+}
+
+.helpdesk-notice {
+    background-color: #fff8e5 !important;
+    border-left: 4px solid #ffb900 !important;
+    padding: 12px !important;
+    margin: 20px 0 !important;
+}
+
+/* Tables */
+.wp-list-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    table-layout: auto !important;
+}
+
+.wp-list-table thead th {
+    background-color: #f5f5f5 !important;
+    font-weight: 600 !important;
+    padding: 12px !important;
+}
+
+.wp-list-table tbody tr {
+    transition: background-color 0.2s ease !important;
+}
+
+.wp-list-table tbody tr:hover {
+    background-color: #f9f9f9 !important;
+}
+
+.wp-list-table td {
+    padding: 12px !important;
+}
+
+.wp-list-table .button {
+    white-space: nowrap !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .helpdesk-frontend-header {
+        flex-direction: column;
+    }
+
+    .helpdesk-frontend-nav ul {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .helpdesk-frontend-nav .nav-link {
+        border-bottom: none;
+        border-left: 3px solid transparent;
+        padding: 15px 20px;
+    }
+
+    .helpdesk-frontend-nav .nav-link.active {
+        border-left-color: #fff;
+        border-bottom: none;
+    }
+
+    .helpdesk-frontend-nav .nav-user {
+        padding-right: 0;
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        padding: 15px 20px;
+    }
+
+    .helpdesk-dashboard-wrapper {
+        grid-template-columns: 1fr;
+    }
+}
