@@ -5,7 +5,8 @@
  */
 
 // Load WordPress
-require_once( '../../../wp-load.php' );
+define('WP_USE_THEMES', false);
+require_once( dirname(__FILE__) . '/../../../wp-load.php' );
 
 // Security check
 if ( ! current_user_can( 'manage_options' ) ) {

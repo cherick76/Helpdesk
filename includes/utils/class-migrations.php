@@ -113,19 +113,19 @@ class Migrations {
             $columns[] = $col->Field;
         }
         
-        // Rename popis_riesenia to popis_riesenie
-        if ( in_array( 'popis_riesenia', $columns ) ) {
-            error_log( 'Attempting to rename popis_riesenia to popis_riesenie...' );
-            $sql = "ALTER TABLE `$table` CHANGE COLUMN `popis_riesenia` `popis_riesenie` LONGTEXT DEFAULT NULL";
+        // Add popis_riesenie column if it doesn't exist
+        if ( ! in_array( 'popis_riesenie', $columns ) ) {
+            error_log( 'Attempting to add popis_riesenie column...' );
+            $sql = "ALTER TABLE `$table` ADD COLUMN `popis_riesenie` LONGTEXT DEFAULT NULL AFTER `popis_problem`";
             error_log( 'SQL: ' . $sql );
             $result = $wpdb->query( $sql );
             if ( $result !== false ) {
-                error_log( '✓ Successfully renamed popis_riesenia to popis_riesenie' );
+                error_log( '✓ Successfully added popis_riesenie column' );
             } else {
                 error_log( '✗ Error: ' . $wpdb->last_error );
             }
         } else {
-            error_log( 'Column popis_riesenia not found' );
+            error_log( 'Column popis_riesenie already exists' );
         }
         
         // Ensure email_1 and email_2 exist

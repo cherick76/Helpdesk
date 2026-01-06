@@ -3429,12 +3429,12 @@ console.log('admin.js file loaded - v1.0.1');
                         _ajax_nonce: nonce,
                         id: id,
                         nazov: $('#bug-nazov').val(),
-                        popis: $('#bug-popis').val(),
+                        popis_problem: $('#bug-popis-problem').val(),
                         kod_chyby: $('#bug-kod_chyby').val(),
                         produkt: $('#bug-produkt').val(),
                         email_1: $('#bug-email-1').val(),
                         email_2: $('#bug-email-2').val(),
-                        popis_riesenia: $('#bug-popis-riesenia').val(),
+                        popis_riesenie: $('#bug-popis-riesenie').val(),
                         podpis_id: $('#bug-podpis').val(),
                         tagy: $('#bug-tagy').val()
                     },
@@ -3503,14 +3503,15 @@ console.log('admin.js file loaded - v1.0.1');
                     success: function(response) {
                         if (response.success) {
                             const bug = response.data.bug;
+                            console.log('Loaded bug data:', bug);
                             $('#bug-id').val(bug.id);
                             $('#bug-nazov').val(bug.nazov);
-                            $('#bug-popis-problem').val(bug.popis_problem || bug.popis || '');
+                            $('#bug-popis-problem').val(bug.popis_problem || '');
                             $('#bug-kod_chyby').val(bug.kod_chyby);
                             $('#bug-produkt').val(bug.produkt);
-                            $('#bug-email-1').val(bug.email_1 || bug.riesenie || '');
-                            $('#bug-email-2').val(bug.email_2 || bug.riesenie_2 || '');
-                            $('#bug-popis-riesenie').val(bug.popis_riesenie || bug.popis_riesenia || '');
+                            $('#bug-email-1').val(bug.email_1 || '');
+                            $('#bug-email-2').val(bug.email_2 || '');
+                            $('#bug-popis-riesenie').val(bug.popis_riesenie || '');
                             $('#bug-podpis').val(bug.podpis_id || '');
                             
                             // Load full description from bug code if available
