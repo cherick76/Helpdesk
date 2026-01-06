@@ -3,14 +3,14 @@
  * Guide Links Admin View
  */
 
-use HelpDesk\Models\Link;
+use HelpDesk\Models\GuideLink;
 use HelpDesk\Models\Product;
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-$links = Link::get_all();
+$links = GuideLink::get_all();
 $products = Product::get_all_active();
 ?>
 

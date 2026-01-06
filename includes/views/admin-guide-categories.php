@@ -15,15 +15,6 @@ $categories = GuideCategory::get_all();
 <div class="wrap">
     <h1><?php echo esc_html__( 'Kategórie návodov', HELPDESK_TEXT_DOMAIN ); ?></h1>
 
-    <!-- DEBUG: Check if handlers are registered -->
-    <div style="background: #f0f0f0; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc;">
-        <p><strong>DEBUG INFO:</strong></p>
-        <p>Handlers registered: <?php echo isset( $GLOBALS['wp_filter']['wp_ajax_helpdesk_save_guide_category'] ) ? 'YES (' . count( $GLOBALS['wp_filter']['wp_ajax_helpdesk_save_guide_category']->callbacks ) . ')' : 'NO'; ?></p>
-        <p>Admin nonce: <?php echo wp_create_nonce( 'helpdesk-nonce' ); ?></p>
-        <p>Is Admin: <?php echo is_admin() ? 'YES' : 'NO'; ?></p>
-        <p>PHP Version: <?php echo phpversion(); ?></p>
-    </div>
-
     <div class="helpdesk-admin-container">
         <div class="helpdesk-button-group">
             <button class="button button-primary helpdesk-btn-new-category">
