@@ -5,6 +5,7 @@
 
 use HelpDesk\Models\GeneralGuide;
 use HelpDesk\Models\Product;
+use HelpDesk\Models\GuideCategory;
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
@@ -12,6 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 $guides = GeneralGuide::get_all_active();
 $products = Product::get_all();
+$categories = GuideCategory::get_all();
 ?>
 
 <div class="wrap">
@@ -36,9 +38,14 @@ $products = Product::get_all();
 
                 <div>
                     <label for="helpdesk-guides-category" style="display: block; font-weight: 500; margin-bottom: 5px;">
-                        <?php echo esc_html__( 'Kategória', HELPDESK_TEXT_DOMAIN ); ?>
+                        <?php echo esc_html__( 'Typ', HELPDESK_TEXT_DOMAIN ); ?>
                     </label>
-                    <input type="text" id="helpdesk-guides-category" class="widefat" style="padding: 8px;" placeholder="<?php echo esc_attr__( 'Kategória...', HELPDESK_TEXT_DOMAIN ); ?>">
+                    <select id="helpdesk-guides-category" class="widefat" style="padding: 8px;">
+                        <option value=""><?php echo esc_html__( 'Všetky typy', HELPDESK_TEXT_DOMAIN ); ?></option>
+                        <?php foreach ( $categories as $category ) : ?>
+                            <option value="<?php echo esc_attr( $category['nazov'] ); ?>"><?php echo esc_html( $category['nazov'] ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
 
                 <div>
@@ -68,7 +75,7 @@ $products = Product::get_all();
             <thead>
                 <tr>
                     <th scope="col" class="column-nazov"><?php echo esc_html__( 'Názov', HELPDESK_TEXT_DOMAIN ); ?></th>
-                    <th scope="col" class="column-kategoria"><?php echo esc_html__( 'Kategória', HELPDESK_TEXT_DOMAIN ); ?></th>
+                    <th scope="col" class="column-kategoria"><?php echo esc_html__( 'Typ', HELPDESK_TEXT_DOMAIN ); ?></th>
                     <th scope="col" class="column-produkt"><?php echo esc_html__( 'Produkt', HELPDESK_TEXT_DOMAIN ); ?></th>
                     <th scope="col" class="column-tagy"><?php echo esc_html__( 'Tagy', HELPDESK_TEXT_DOMAIN ); ?></th>
                     <th scope="col" class="column-status"><?php echo esc_html__( 'Stav', HELPDESK_TEXT_DOMAIN ); ?></th>
@@ -157,9 +164,14 @@ $products = Product::get_all();
                 <div class="helpdesk-form-row">
                     <div class="helpdesk-form-col-half">
                         <label for="guide-kategoria" style="display: block; font-weight: 500; margin-bottom: 8px;">
-                            <?php echo esc_html__( 'Kategória', HELPDESK_TEXT_DOMAIN ); ?>
+                            <?php echo esc_html__( 'Typ', HELPDESK_TEXT_DOMAIN ); ?>
                         </label>
-                        <input type="text" id="guide-kategoria" name="kategoria" class="widefat" style="padding: 8px; box-sizing: border-box;">
+                        <select id="guide-kategoria" name="kategoria" class="widefat" style="padding: 8px; box-sizing: border-box;">
+                            <option value="">-- <?php echo esc_html__( 'Vyberte typ', HELPDESK_TEXT_DOMAIN ); ?> --</option>
+                            <?php foreach ( $categories as $category ) : ?>
+                                <option value="<?php echo esc_attr( $category['nazov'] ); ?>"><?php echo esc_html( $category['nazov'] ); ?></option>
+                            <?php endforeach; ?>
+                        </select>
                         <span class="error-message" id="error-guide_kategoria"></span>
                     </div>
 
