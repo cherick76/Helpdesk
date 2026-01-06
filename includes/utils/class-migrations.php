@@ -80,42 +80,71 @@ class Migrations {
         
         $table = Database::get_bugs_table();
         
-        // Get current columns
-        $columns = $wpdb->get_col( "SHOW COLUMNS FROM $table" );
+        // Get all columns
+        $result = $wpdb->get_results( "DESC $table" );
+        $columns = array();
+        foreach ( $result as $col ) {
+            $columns[] = $col->Field;
+        }
         
-        error_log( 'Current columns in ' . $table . ': ' . print_r( $columns, true ) );
+        error_log( '=== MIGRATION DEBUG ===' );
+        error_log( 'Table: ' . $table );
+        error_log( 'Columns: ' . implode( ', ', $columns ) );
         
         // Rename popis to popis_problem
-        if ( in_array( 'popis', $columns ) && ! in_array( 'popis_problem', $columns ) ) {
-            $result = $wpdb->query( "ALTER TABLE $table CHANGE COLUMN popis popis_problem LONGTEXT DEFAULT NULL" );
+        if ( in_array( 'popis', $columns ) ) {
+            error_log( 'Attempting to rename popis to popis_problem...' );
+            $sql = "ALTER TABLE `$table` CHANGE COLUMN `popis` `popis_problem` LONGTEXT DEFAULT NULL";
+            error_log( 'SQL: ' . $sql );
+            $result = $wpdb->query( $sql );
             if ( $result !== false ) {
-                error_log( 'Successfully renamed popis column to popis_problem in ' . $table );
+                error_log( '✓ Successfully renamed popis to popis_problem' );
             } else {
-                error_log( 'Error renaming popis column: ' . $wpdb->last_error );
+                error_log( '✗ Error: ' . $wpdb->last_error );
             }
+        } else {
+            error_log( 'Column popis not found' );
+        }
+        
+        // Refresh column list
+        $result = $wpdb->get_results( "DESC $table" );
+        $columns = array();
+        foreach ( $result as $col ) {
+            $columns[] = $col->Field;
         }
         
         // Rename popis_riesenia to popis_riesenie
-        if ( in_array( 'popis_riesenia', $columns ) && ! in_array( 'popis_riesenie', $columns ) ) {
-            $result = $wpdb->query( "ALTER TABLE $table CHANGE COLUMN popis_riesenia popis_riesenie LONGTEXT DEFAULT NULL" );
+        if ( in_array( 'popis_riesenia', $columns ) ) {
+            error_log( 'Attempting to rename popis_riesenia to popis_riesenie...' );
+            $sql = "ALTER TABLE `$table` CHANGE COLUMN `popis_riesenia` `popis_riesenie` LONGTEXT DEFAULT NULL";
+            error_log( 'SQL: ' . $sql );
+            $result = $wpdb->query( $sql );
             if ( $result !== false ) {
-                error_log( 'Successfully renamed popis_riesenia column to popis_riesenie in ' . $table );
+                error_log( '✓ Successfully renamed popis_riesenia to popis_riesenie' );
             } else {
-                error_log( 'Error renaming popis_riesenia column: ' . $wpdb->last_error );
+                error_log( '✗ Error: ' . $wpdb->last_error );
             }
+        } else {
+            error_log( 'Column popis_riesenia not found' );
         }
         
         // Ensure email_1 and email_2 exist
+        $result = $wpdb->get_results( "DESC $table" );
+        $columns = array();
+        foreach ( $result as $col ) {
+            $columns[] = $col->Field;
+        }
+        
         if ( ! in_array( 'email_1', $columns ) ) {
-            $wpdb->query( "ALTER TABLE $table ADD COLUMN email_1 LONGTEXT DEFAULT NULL AFTER kod_chyby" );
-            error_log( 'Added email_1 column to ' . $table );
+            error_log( 'Adding email_1 column...' );
+            $wpdb->query( "ALTER TABLE `$table` ADD COLUMN `email_1` LONGTEXT DEFAULT NULL AFTER `kod_chyby`" );
         }
         
         if ( ! in_array( 'email_2', $columns ) ) {
-            $wpdb->query( "ALTER TABLE $table ADD COLUMN email_2 LONGTEXT DEFAULT NULL AFTER email_1" );
-            error_log( 'Added email_2 column to ' . $table );
+            error_log( 'Adding email_2 column...' );
+            $wpdb->query( "ALTER TABLE `$table` ADD COLUMN `email_2` LONGTEXT DEFAULT NULL AFTER `email_1`" );
         }
         
-        error_log( 'Popis columns migration completed' );
+        error_log( '=== MIGRATION COMPLETE ===' );
     }
 }

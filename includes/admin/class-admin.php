@@ -25,6 +25,72 @@ class Admin {
     private function setup_hooks() {
         add_action( 'admin_menu', array( $this, 'register_menus' ) );
         add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
+        add_action( 'admin_notices', array( $this, 'show_migration_notice' ) );
+    }
+
+    /**
+     * Show migration notice if needed
+     */
+    public function show_migration_notice() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+        
+        $db_version = get_option( 'helpdesk_db_version', '0' );
+        
+        // Check if migration is needed
+        if ( version_compare( $db_version, '1.0.6', '<' ) ) {
+            ?>
+            <div class="notice notice-warning is-dismissible" style="padding: 15px;">
+                <h3><?php echo esc_html__( 'HelpDesk - Databáza potrebuje aktualizáciu', HELPDESK_TEXT_DOMAIN ); ?></h3>
+                <p><?php echo esc_html__( 'Prosím spustite migráciu databázy aby boli aplikované posledné zmeny schémy.', HELPDESK_TEXT_DOMAIN ); ?></p>
+                <p>
+                    <button type="button" class="button button-primary" id="helpdesk-run-migration">
+                        <?php echo esc_html__( 'Spustiť migráciu', HELPDESK_TEXT_DOMAIN ); ?>
+                    </button>
+                    <span id="helpdesk-migration-status"></span>
+                </p>
+            </div>
+            <script>
+            (function($) {
+                $(document).ready(function() {
+                    $('#helpdesk-run-migration').on('click', function(e) {
+                        e.preventDefault();
+                        var $btn = $(this);
+                        var $status = $('#helpdesk-migration-status');
+                        
+                        $btn.prop('disabled', true).text('Bežia migrácie...');
+                        $status.html('').css('color', '#0073aa');
+                        
+                        $.ajax({
+                            type: 'POST',
+                            url: ajaxurl,
+                            data: {
+                                action: 'helpdesk_run_migration',
+                                _ajax_nonce: '<?php echo wp_create_nonce( 'helpdesk_nonce' ); ?>'
+                            },
+                            success: function(response) {
+                                if (response.success) {
+                                    $status.html('✓ ' + response.data.message).css('color', 'green');
+                                    setTimeout(function() {
+                                        location.reload();
+                                    }, 1500);
+                                } else {
+                                    $status.html('✗ Chyba: ' + (response.data.message || 'Neznáma chyba')).css('color', 'red');
+                                    $btn.prop('disabled', false).text('Spustiť migráciu znova');
+                                }
+                            },
+                            error: function() {
+                                $status.html('✗ AJAX chyba').css('color', 'red');
+                                $btn.prop('disabled', false).text('Spustiť migráciu znova');
+                            }
+                        });
+                    });
+                });
+            })(jQuery);
+            </script>
+            <?php
+        }
     }
 
     /**
