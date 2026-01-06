@@ -230,6 +230,14 @@ $signatures = Signature::get_all();
                 </div>
 
                 <div class="form-group">
+                    <label for="bug-popis-riesenia">
+                        <?php echo esc_html__( 'Popis riešenia', HELPDESK_TEXT_DOMAIN ); ?>
+                    </label>
+                    <textarea id="bug-popis-riesenia" name="popis_riesenia" rows="3"></textarea>
+                    <span class="error-message" id="error-popis_riesenia"></span>
+                </div>
+
+                <div class="form-group">
                     <label for="bug-email-1">
                         <?php echo esc_html__( 'Email 1', HELPDESK_TEXT_DOMAIN ); ?>
                     </label>
@@ -249,14 +257,6 @@ $signatures = Signature::get_all();
                         <?php echo esc_html__( 'Kopírovať do clipboardu', HELPDESK_TEXT_DOMAIN ); ?>
                     </button>
                     <span class="error-message" id="error-email_2"></span>
-                </div>
-
-                <div class="form-group">
-                    <label for="bug-popis-riesenia">
-                        <?php echo esc_html__( 'Popis', HELPDESK_TEXT_DOMAIN ); ?>
-                    </label>
-                    <textarea id="bug-popis-riesenia" name="popis_riesenia" rows="3"></textarea>
-                    <span class="error-message" id="error-popis_riesenia"></span>
                 </div>
 
                 <div class="form-group">
