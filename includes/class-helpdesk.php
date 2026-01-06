@@ -107,7 +107,26 @@ class HelpDesk {
     private function setup_hooks() {
         error_log( 'DEBUG: setup_hooks called' );
         add_action( 'init', array( $this, 'initialize_modules' ) );
+        add_action( 'wp_ajax_helpdesk_run_migration', array( $this, 'handle_run_migration' ) );
         error_log( 'DEBUG: init hook registered' );
+    }
+
+    /**
+     * Handle manual migration AJAX request
+     */
+    public function handle_run_migration() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => 'Not authorized' ) );
+        }
+        
+        check_ajax_referer( 'helpdesk_nonce', '_ajax_nonce' );
+        
+        \HelpDesk\Utils\Migrations::run_migrations();
+        
+        wp_send_json_success( array( 
+            'message' => 'Migrácia bola vykonaná',
+            'db_version' => get_option( 'helpdesk_db_version' )
+        ) );
     }
 
     /**
