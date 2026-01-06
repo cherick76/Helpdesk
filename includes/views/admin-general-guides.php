@@ -104,14 +104,18 @@ $categories = GuideCategory::get_all();
                                 <?php if ( ! empty( $guide->tagy ) ) : ?>
                                     <div style="display: flex; flex-wrap: wrap; gap: 4px;">
                                         <?php 
-                                        $tagy = json_decode( $guide->tagy );
-                                        if ( is_array( $tagy ) ) {
+                                        $tagy = json_decode( $guide->tagy, true );
+                                        if ( is_array( $tagy ) && ! empty( $tagy ) ) {
                                             foreach ( $tagy as $tag ) {
                                                 echo '<span style="background-color: #e7f3ff; color: #0073aa; padding: 2px 6px; border-radius: 3px; font-size: 12px; white-space: nowrap;">' . esc_html( $tag ) . '</span>';
                                             }
+                                        } else {
+                                            echo '--';
                                         }
                                         ?>
                                     </div>
+                                <?php else : ?>
+                                    <span>--</span>
                                 <?php endif; ?>
                             </td>
                             <td class="column-status">
