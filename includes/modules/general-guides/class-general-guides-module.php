@@ -315,7 +315,13 @@ class GeneralGuidesModule extends BaseModule {
             wp_send_json_error( array( 'message' => 'ID linky chýba' ) );
         }
 
-        $link = new GuideLink( $link_id );
+        // Try GuideResource first (standalone links)
+        $link = new GuideResource( $link_id );
+
+        if ( ! $link->exists() ) {
+            // Fall back to GuideLink (links in guides)
+            $link = new GuideLink( $link_id );
+        }
 
         if ( ! $link->exists() ) {
             wp_send_json_error( array( 'message' => 'Linka nenájdená' ) );
@@ -342,7 +348,13 @@ class GeneralGuidesModule extends BaseModule {
             wp_send_json_error( array( 'message' => 'ID linky chýba' ) );
         }
 
-        $link = new GuideLink( $link_id );
+        // Try GuideResource first (standalone links)
+        $link = new GuideResource( $link_id );
+
+        if ( ! $link->exists() ) {
+            // Fall back to GuideLink (links in guides)
+            $link = new GuideLink( $link_id );
+        }
 
         if ( ! $link->exists() ) {
             wp_send_json_error( array( 'message' => 'Linka nenájdená' ) );

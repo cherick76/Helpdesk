@@ -92,5 +92,12 @@ class GuideResource extends BaseModel {
 
         return $results ?: array();
     }
+
+    /**
+     * Get all data for this resource
+     */
+    public function get_all_data() {
+        return $this->data;
+    }
 }
 ?>
