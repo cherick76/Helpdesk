@@ -5679,9 +5679,19 @@ console.log('admin.js file loaded - v1.0.1');
     function initVacations() {
         console.log('=== Initializing Vacations ===');
 
+        // Helper function to normalize text (remove diacritics - accents)
+        function normalizeText(text) {
+            return text
+                .toLowerCase()
+                .normalize('NFD')                   // Decompose accented characters
+                .replace(/[\u0300-\u036f]/g, '')   // Remove combining diacritical marks
+                .trim();
+        }
+
         // ===== VACATIONS FILTERS =====
         function filterVacationsTable() {
             const selectedEmployee = $('#filter-vacation-employee').val();
+            const normalizedSelectedEmployee = normalizeText(selectedEmployee);
             const dateFrom = $('#filter-vacation-date-from').val();
             const dateTo = $('#filter-vacation-date-to').val();
             const today = new Date().toISOString().split('T')[0];
@@ -5689,14 +5699,14 @@ console.log('admin.js file loaded - v1.0.1');
 
             $('#helpdesk-vacations-table tbody tr').each(function() {
                 const $row = $(this);
-                const employee = $row.data('employee');
+                const employee = normalizeText($row.data('employee'));
                 const rowDateFrom = $row.data('date-from');
                 const rowDateTo = $row.data('date-to');
 
                 let show = true;
 
-                // Employee filter
-                if (selectedEmployee && employee !== selectedEmployee) {
+                // Employee filter (ignore diacritics)
+                if (selectedEmployee && employee !== normalizedSelectedEmployee) {
                     show = false;
                 }
 
