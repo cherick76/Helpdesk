@@ -65,12 +65,12 @@ class BugsModule extends BaseModule {
         // Build data array from POST
         $data = array(
             'nazov' => Security::get_post_param( 'nazov', '', 'text' ),
-            'popis' => Security::get_post_param( 'popis', '', 'textarea' ),
+            'popis_problem' => Security::get_post_param( 'popis_problem', '', 'textarea' ),
             'kod_chyby' => Security::get_post_param( 'kod_chyby', '', 'text' ),
             'produkt' => Security::get_post_param( 'produkt', 0, 'int' ),
             'email_1' => Security::get_post_param( 'email_1', '', 'textarea' ),
             'email_2' => Security::get_post_param( 'email_2', '', 'textarea' ),
-            'popis_riesenia' => Security::get_post_param( 'popis_riesenia', '', 'textarea' ),
+            'popis_riesenie' => Security::get_post_param( 'popis_riesenie', '', 'textarea' ),
             'podpis_id' => Security::get_post_param( 'podpis_id', null, 'int' ),
             'tagy' => Security::get_post_param( 'tagy', '', 'text' ),
         );

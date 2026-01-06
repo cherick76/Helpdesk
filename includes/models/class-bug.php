@@ -24,12 +24,12 @@ class Bug extends BaseModel {
         // Add default values if not provided
         $insert_data = array(
             'nazov' => $data['nazov'] ?? '',
-            'popis' => $data['popis'] ?? '',
+            'popis_problem' => $data['popis_problem'] ?? $data['popis'] ?? '',
             'kod_chyby' => $data['kod_chyby'] ?? '',
             'produkt' => $data['produkt'] ?? 0,
             'email_1' => $data['email_1'] ?? $data['riesenie'] ?? '',
             'email_2' => $data['email_2'] ?? $data['riesenie_2'] ?? '',
-            'popis_riesenia' => $data['popis_riesenia'] ?? '',
+            'popis_riesenie' => $data['popis_riesenie'] ?? $data['popis_riesenia'] ?? '',
             'podpis_id' => $data['podpis_id'] ?? null,
             'stav' => $data['stav'] ?? 'novy',
             'tagy' => $this->prepare_tags( $data['tagy'] ?? '' ),
@@ -68,12 +68,12 @@ class Bug extends BaseModel {
         // Prepare update data
         $update_data = array(
             'nazov' => $data['nazov'] ?? '',
-            'popis' => $data['popis'] ?? '',
+            'popis_problem' => $data['popis_problem'] ?? $data['popis'] ?? '',
             'kod_chyby' => $data['kod_chyby'] ?? '',
             'produkt' => $data['produkt'] ?? 0,
             'email_1' => $data['email_1'] ?? $data['riesenie'] ?? '',
             'email_2' => $data['email_2'] ?? $data['riesenie_2'] ?? '',
-            'popis_riesenia' => $data['popis_riesenia'] ?? '',
+            'popis_riesenie' => $data['popis_riesenie'] ?? $data['popis_riesenia'] ?? '',
             'podpis_id' => $data['podpis_id'] ?? null,
             'tagy' => $this->prepare_tags( $data['tagy'] ?? '' ),
         );

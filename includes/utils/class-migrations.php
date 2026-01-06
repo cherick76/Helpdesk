@@ -33,6 +33,18 @@ class Migrations {
         // Check if email_1 column already exists
         $columns = $wpdb->get_col( "SHOW COLUMNS FROM $table" );
         
+        // Rename popis to popis_problem
+        if ( in_array( 'popis', $columns ) && ! in_array( 'popis_problem', $columns ) ) {
+            $wpdb->query( "ALTER TABLE $table CHANGE COLUMN popis popis_problem LONGTEXT DEFAULT NULL" );
+            error_log( 'Renamed popis column to popis_problem in ' . $table );
+        }
+        
+        // Rename popis_riesenia to popis_riesenie
+        if ( in_array( 'popis_riesenia', $columns ) && ! in_array( 'popis_riesenie', $columns ) ) {
+            $wpdb->query( "ALTER TABLE $table CHANGE COLUMN popis_riesenia popis_riesenie LONGTEXT DEFAULT NULL" );
+            error_log( 'Renamed popis_riesenia column to popis_riesenie in ' . $table );
+        }
+        
         if ( ! in_array( 'email_1', $columns ) ) {
             // Add new columns if they don't exist
             if ( in_array( 'riesenie', $columns ) ) {
@@ -56,11 +68,6 @@ class Migrations {
                 $wpdb->query( "ALTER TABLE $table ADD COLUMN email_2 LONGTEXT DEFAULT NULL AFTER email_1" );
                 error_log( 'Added email_2 column to ' . $table );
             }
-        }
-        
-        if ( ! in_array( 'popis_riesenia', $columns ) ) {
-            $wpdb->query( "ALTER TABLE $table ADD COLUMN popis_riesenia LONGTEXT DEFAULT NULL AFTER email_2" );
-            error_log( 'Added popis_riesenia column to ' . $table );
         }
         
         error_log( 'Bug field migration completed' );

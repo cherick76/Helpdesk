@@ -3505,12 +3505,12 @@ console.log('admin.js file loaded - v1.0.1');
                             const bug = response.data.bug;
                             $('#bug-id').val(bug.id);
                             $('#bug-nazov').val(bug.nazov);
-                            $('#bug-popis').val(bug.popis);
+                            $('#bug-popis-problem').val(bug.popis_problem || bug.popis || '');
                             $('#bug-kod_chyby').val(bug.kod_chyby);
                             $('#bug-produkt').val(bug.produkt);
                             $('#bug-email-1').val(bug.email_1 || bug.riesenie || '');
                             $('#bug-email-2').val(bug.email_2 || bug.riesenie_2 || '');
-                            $('#bug-popis-riesenia').val(bug.popis_riesenia || '');
+                            $('#bug-popis-riesenie').val(bug.popis_riesenie || bug.popis_riesenia || '');
                             $('#bug-podpis').val(bug.podpis_id || '');
                             
                             // Load full description from bug code if available

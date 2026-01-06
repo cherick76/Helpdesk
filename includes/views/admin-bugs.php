@@ -222,19 +222,19 @@ $signatures = Signature::get_all();
                 </div>
 
                 <div class="form-group">
-                    <label for="bug-popis">
+                    <label for="bug-popis-problem">
                         <?php echo esc_html__( 'Popis problému', HELPDESK_TEXT_DOMAIN ); ?>
                     </label>
-                    <textarea id="bug-popis" name="popis" rows="3"></textarea>
-                    <span class="error-message" id="error-popis"></span>
+                    <textarea id="bug-popis-problem" name="popis_problem" rows="3"></textarea>
+                    <span class="error-message" id="error-popis_problem"></span>
                 </div>
 
                 <div class="form-group">
-                    <label for="bug-popis-riesenia">
+                    <label for="bug-popis-riesenie">
                         <?php echo esc_html__( 'Popis riešenia', HELPDESK_TEXT_DOMAIN ); ?>
                     </label>
-                    <textarea id="bug-popis-riesenia" name="popis_riesenia" rows="3"></textarea>
-                    <span class="error-message" id="error-popis_riesenia"></span>
+                    <textarea id="bug-popis-riesenie" name="popis_riesenie" rows="3"></textarea>
+                    <span class="error-message" id="error-popis_riesenie"></span>
                 </div>
 
                 <div class="form-group">

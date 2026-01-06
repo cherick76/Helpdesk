@@ -80,11 +80,11 @@ class Database {
         $bugs_table = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}hd_riesenia (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             nazov VARCHAR(255) DEFAULT NULL,
-            popis LONGTEXT DEFAULT NULL,
+            popis_problem LONGTEXT DEFAULT NULL,
             kod_chyby VARCHAR(50) DEFAULT NULL,
             email_1 LONGTEXT DEFAULT NULL,
             email_2 LONGTEXT DEFAULT NULL,
-            popis_riesenia LONGTEXT DEFAULT NULL,
+            popis_riesenie LONGTEXT DEFAULT NULL,
             produkt BIGINT UNSIGNED DEFAULT NULL,
             podpis_id BIGINT UNSIGNED DEFAULT NULL,
             stav VARCHAR(50) DEFAULT 'novy',
