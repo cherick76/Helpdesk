@@ -1,16 +1,15 @@
 <?php
 /**
- * Guide Links Admin View
+ * Guide Resources (Links) Admin View
  */
 
-use HelpDesk\Models\GuideLink;
-use HelpDesk\Models\Product;
+use HelpDesk\Models\GuideResource;
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-$links = GuideLink::get_all();
+$resources = GuideResource::get_all();
 $products = Product::get_all_active();
 ?>
 
@@ -35,19 +34,19 @@ $products = Product::get_all_active();
                 </tr>
             </thead>
             <tbody>
-                <?php if ( ! empty( $links ) ) : ?>
-                    <?php foreach ( $links as $link ) : ?>
-                        <tr data-link-id="<?php echo absint( $link['id'] ); ?>">
-                            <td class="column-nazov"><strong><?php echo esc_html( $link['nazov'] ?? '--' ); ?></strong></td>
+                <?php if ( ! empty( $resources ) ) : ?>
+                    <?php foreach ( $resources as $resource ) : ?>
+                        <tr data-link-id="<?php echo absint( $resource['id'] ); ?>">
+                            <td class="column-nazov"><strong><?php echo esc_html( $resource['nazov'] ?? '--' ); ?></strong></td>
                             <td class="column-url">
-                                <a href="<?php echo esc_url( $link['url'] ?? '#' ); ?>" target="_blank" rel="noopener noreferrer">
-                                    <?php echo esc_html( substr( $link['url'] ?? '--', 0, 50 ) ); ?>
+                                <a href="<?php echo esc_url( $resource['url'] ?? '#' ); ?>" target="_blank" rel="noopener noreferrer">
+                                    <?php echo esc_html( substr( $resource['url'] ?? '--', 0, 50 ) ); ?>
                                 </a>
                             </td>
-                            <td class="column-typ"><?php echo esc_html( $link['typ'] ?? '--' ); ?></td>
+                            <td class="column-typ"><?php echo esc_html( $resource['typ'] ?? '--' ); ?></td>
                             <td class="column-status">
-                                <span class="status-badge <?php echo $link['aktivny'] ? 'status-active' : 'status-inactive'; ?>">
-                                    <?php echo $link['aktivny'] ? esc_html__( 'Aktívny', HELPDESK_TEXT_DOMAIN ) : esc_html__( 'Neaktívny', HELPDESK_TEXT_DOMAIN ); ?>
+                                <span class="status-badge <?php echo $resource['aktivny'] ? 'status-active' : 'status-inactive'; ?>">
+                                    <?php echo $resource['aktivny'] ? esc_html__( 'Aktívny', HELPDESK_TEXT_DOMAIN ) : esc_html__( 'Neaktívny', HELPDESK_TEXT_DOMAIN ); ?>
                                 </span>
                             </td>
                             <td class="column-actions" style="text-align: center; font-size: 18px;">

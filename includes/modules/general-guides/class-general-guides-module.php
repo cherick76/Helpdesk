@@ -9,6 +9,7 @@ use HelpDesk\Modules\BaseModule;
 use HelpDesk\Models\GeneralGuide;
 use HelpDesk\Models\GuideLink;
 use HelpDesk\Models\GuideCategory;
+use HelpDesk\Models\GuideResource;
 use HelpDesk\Utils\Validator;
 use HelpDesk\Utils\Security;
 
@@ -209,56 +210,94 @@ class GeneralGuidesModule extends BaseModule {
         $link_id = isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0;
         $navod_id = isset( $_POST['navod_id'] ) ? absint( $_POST['navod_id'] ) : 0;
         
-        if ( ! $navod_id ) {
-            wp_send_json_error( array( 'message' => 'ID návodu chýba' ) );
-        }
-
-        // Check if guide exists
-        $guide = new GeneralGuide( $navod_id );
-        if ( ! $guide->exists() ) {
-            wp_send_json_error( array( 'message' => 'Návod nenájdený' ) );
-        }
-
-        // Build data array from POST
-        $data = array(
-            'navod_id' => $navod_id,
-            'nazov' => isset( $_POST['nazov'] ) ? sanitize_text_field( $_POST['nazov'] ) : '',
-            'url' => isset( $_POST['url'] ) ? esc_url_raw( $_POST['url'] ) : '',
-            'produkt' => isset( $_POST['produkt'] ) ? absint( $_POST['produkt'] ) : 0,
-        );
-
-        // Validate data
-        if ( empty( $data['nazov'] ) || empty( $data['url'] ) ) {
-            wp_send_json_error( array( 'message' => 'Názov a URL sú povinné' ) );
-        }
-
-        if ( $link_id ) {
-            // Update
-            $link = new GuideLink( $link_id );
-
-            if ( ! $link->exists() ) {
-                wp_send_json_error( array( 'message' => 'Linka nenájdená' ) );
+        // If navod_id is provided, save to GuideLink (links in guides)
+        if ( $navod_id ) {
+            // Check if guide exists
+            $guide = new GeneralGuide( $navod_id );
+            if ( ! $guide->exists() ) {
+                wp_send_json_error( array( 'message' => 'Návod nenájdený' ) );
             }
 
-            $link->update( $data );
-            wp_send_json_success( array(
-                'message' => 'Linka bola aktualizovaná',
-                'link' => $link->get_all_data(),
-            ) );
+            // Build data array from POST
+            $data = array(
+                'navod_id' => $navod_id,
+                'nazov' => isset( $_POST['nazov'] ) ? sanitize_text_field( $_POST['nazov'] ) : '',
+                'url' => isset( $_POST['url'] ) ? esc_url_raw( $_POST['url'] ) : '',
+                'produkt' => isset( $_POST['produkt'] ) ? absint( $_POST['produkt'] ) : 0,
+            );
+
+            // Validate data
+            if ( empty( $data['nazov'] ) || empty( $data['url'] ) ) {
+                wp_send_json_error( array( 'message' => 'Názov a URL sú povinné' ) );
+            }
+
+            if ( $link_id ) {
+                // Update
+                $link = new GuideLink( $link_id );
+
+                if ( ! $link->exists() ) {
+                    wp_send_json_error( array( 'message' => 'Linka nenájdená' ) );
+                }
+
+                $link->update( $data );
+                wp_send_json_success( array(
+                    'message' => 'Linka bola aktualizovaná',
+                    'link' => $link->get_all_data(),
+                ) );
+            } else {
+                // Create
+                $link = new GuideLink();
+                $new_id = $link->create( $data );
+
+                if ( ! $new_id ) {
+                    wp_send_json_error( array( 'message' => 'Chyba pri vytváraní linky' ) );
+                }
+
+                $link = new GuideLink( $new_id );
+                wp_send_json_success( array(
+                    'message' => 'Linka bola vytvorená',
+                    'link' => $link->get_all_data(),
+                ) );
+            }
         } else {
-            // Create
-            $link = new GuideLink();
-            $new_id = $link->create( $data );
+            // Save to GuideResource (standalone links for Linky návodov)
+            $data = array(
+                'nazov' => isset( $_POST['nazov'] ) ? sanitize_text_field( $_POST['nazov'] ) : '',
+                'url' => isset( $_POST['url'] ) ? esc_url_raw( $_POST['url'] ) : '',
+                'typ' => isset( $_POST['typ'] ) ? sanitize_text_field( $_POST['typ'] ) : 'externe',
+                'aktivny' => isset( $_POST['aktivny'] ) ? absint( $_POST['aktivny'] ) : 1,
+            );
 
-            if ( ! $new_id ) {
-                wp_send_json_error( array( 'message' => 'Chyba pri vytváraní linky' ) );
+            if ( empty( $data['nazov'] ) || empty( $data['url'] ) ) {
+                wp_send_json_error( array( 'message' => 'Názov a URL sú povinné' ) );
             }
 
-            $link = new GuideLink( $new_id );
-            wp_send_json_success( array(
-                'message' => 'Linka bola vytvorená',
-                'link' => $link->get_all_data(),
-            ) );
+            if ( $link_id ) {
+                // Update
+                $resource = new GuideResource( $link_id );
+                if ( ! $resource->exists() ) {
+                    wp_send_json_error( array( 'message' => 'Zdroj nenájdený' ) );
+                }
+                $resource->update( $data );
+                wp_send_json_success( array(
+                    'message' => 'Zdroj bol aktualizovaný',
+                    'resource' => $resource->get_all_data(),
+                ) );
+            } else {
+                // Create
+                $resource = new GuideResource();
+                $new_id = $resource->create( $data );
+
+                if ( ! $new_id ) {
+                    wp_send_json_error( array( 'message' => 'Chyba pri vytváraní zdroja' ) );
+                }
+
+                $resource = new GuideResource( $new_id );
+                wp_send_json_success( array(
+                    'message' => 'Zdroj bol vytvorený',
+                    'resource' => $resource->get_all_data(),
+                ) );
+            }
         }
     }
 

@@ -316,6 +316,21 @@ class Database {
                 ON UPDATE CASCADE
         ) $charset_collate;";
 
+        // Table for guide resources (Linky návodov - standalone)
+        $guide_resources_table = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}hd_guide_resources (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            nazov VARCHAR(255) NOT NULL,
+            url VARCHAR(500) NOT NULL,
+            typ VARCHAR(50) NOT NULL DEFAULT 'externe',
+            aktivny TINYINT(1) DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY idx_nazov (nazov),
+            KEY idx_typ (typ),
+            KEY idx_aktivny (aktivny)
+        ) $charset_collate;";
+
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
         // FIRST: Migration from old hd_chyby table to new hd_riesenia table (run BEFORE dbDelta)
@@ -368,6 +383,7 @@ class Database {
         dbDelta( $guide_categories_table );
         dbDelta( $general_guides_table );
         dbDelta( $guide_links_table );
+        dbDelta( $guide_resources_table );
 
         // Add pm_manazer_id column if it doesn't exist
         $projects_table_name = $wpdb->prefix . 'hd_projekty';
