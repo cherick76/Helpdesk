@@ -6462,6 +6462,16 @@ console.log('admin.js file loaded - v1.0.1');
         $(document).on('click', '.helpdesk-btn-new-link', function() {
             $('#link-id').val('');
             $('#helpdesk-link-form')[0].reset();
+            
+            // Populate type selector from guide categories
+            if (helpdesk.guideCategories && helpdesk.guideCategories.length > 0) {
+                let typeHtml = '<option value="">-- Vyberte typ --</option>';
+                helpdesk.guideCategories.forEach(function(cat) {
+                    typeHtml += '<option value="' + cat.kategoria + '">' + cat.kategoria + '</option>';
+                });
+                $('#link-typ').html(typeHtml);
+            }
+            
             $('#link-modal-title').text('Pridať linku');
             $('#btn-delete-link').hide();
             $('#helpdesk-link-modal').show();
@@ -6492,6 +6502,16 @@ console.log('admin.js file loaded - v1.0.1');
                         $('#link-id').val(link.id);
                         $('#link-nazov').val(link.nazov || '');
                         $('#link-url').val(link.url || '');
+                        
+                        // Populate type selector from guide categories
+                        if (helpdesk.guideCategories && helpdesk.guideCategories.length > 0) {
+                            let typeHtml = '<option value="">-- Vyberte typ --</option>';
+                            helpdesk.guideCategories.forEach(function(cat) {
+                                typeHtml += '<option value="' + cat.kategoria + '">' + cat.kategoria + '</option>';
+                            });
+                            $('#link-typ').html(typeHtml);
+                        }
+                        
                         $('#link-typ').val(link.typ || '');
                         $('#link-aktivny').prop('checked', link.aktivny == 1);
                         $('#link-modal-title').text('Upraviť linku');

@@ -364,6 +364,12 @@ class Admin {
         // Ensure boolean values for JavaScript
         $dashboard_filters['show_nw_projects'] = (bool) $dashboard_filters['show_nw_projects'];
 
+        // Load guide categories for link type selector
+        $guide_categories = array();
+        if ( class_exists( 'HelpDesk\Models\GuideCategory' ) ) {
+            $guide_categories = \HelpDesk\Models\GuideCategory::get_all();
+        }
+
         wp_localize_script(
             'helpdesk-admin',
             'helpdesk',
@@ -372,6 +378,7 @@ class Admin {
                 'ajaxurl' => admin_url( 'admin-ajax.php' ),
                 'dashboardDisplay' => $dashboard_display,
                 'dashboardFilters' => $dashboard_filters,
+                'guideCategories' => $guide_categories,
             )
         );
     }
