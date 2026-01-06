@@ -79,6 +79,21 @@ class GuideResource extends BaseModel {
     }
 
     /**
+     * Get all resources
+     */
+    public static function get_all() {
+        global $wpdb;
+        $table = $wpdb->prefix . 'hd_guide_resources';
+        
+        $results = $wpdb->get_results(
+            "SELECT * FROM {$table} ORDER BY nazov ASC",
+            ARRAY_A
+        );
+
+        return $results ?: array();
+    }
+
+    /**
      * Get resources by type
      */
     public static function get_by_type( $typ ) {

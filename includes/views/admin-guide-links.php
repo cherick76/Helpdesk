@@ -10,7 +10,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 $resources = GuideResource::get_all();
-$products = Product::get_all_active();
 ?>
 
 <div class="wrap">
@@ -50,10 +49,10 @@ $products = Product::get_all_active();
                                 </span>
                             </td>
                             <td class="column-actions" style="text-align: center; font-size: 18px;">
-                                <button class="button button-small helpdesk-btn-edit-link" data-id="<?php echo absint( $link['id'] ); ?>" style="border: none; background: none; padding: 5px; cursor: pointer; color: #333; filter: grayscale(100%);" title="<?php echo esc_attr__( 'Upraviť', HELPDESK_TEXT_DOMAIN ); ?>">
+                                <button class="button button-small helpdesk-btn-edit-link" data-id="<?php echo absint( $resource['id'] ); ?>" style="border: none; background: none; padding: 5px; cursor: pointer; color: #333; filter: grayscale(100%);" title="<?php echo esc_attr__( 'Upraviť', HELPDESK_TEXT_DOMAIN ); ?>">
                                     ✏️
                                 </button>
-                                <button class="button button-small button-link-delete helpdesk-btn-delete-link" data-id="<?php echo absint( $link['id'] ); ?>" style="border: none; background: none; padding: 5px; cursor: pointer; color: #333; filter: grayscale(100%);" title="<?php echo esc_attr__( 'Zmazať', HELPDESK_TEXT_DOMAIN ); ?>">
+                                <button class="button button-small button-link-delete helpdesk-btn-delete-link" data-id="<?php echo absint( $resource['id'] ); ?>" style="border: none; background: none; padding: 5px; cursor: pointer; color: #333; filter: grayscale(100%);" title="<?php echo esc_attr__( 'Zmazať', HELPDESK_TEXT_DOMAIN ); ?>">
                                     🗑️
                                 </button>
                             </td>
