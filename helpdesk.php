@@ -64,6 +64,7 @@ function helpdesk_activate() {
 
         // Priamo loadneme Database class - nemôžeme sa spoliehať na autoloader v aktivácii
         require_once HELPDESK_PLUGIN_DIR . 'includes/utils/class-database.php';
+        require_once HELPDESK_PLUGIN_DIR . 'includes/utils/class-migrations.php';
 
         // Check database version
         $db_version = get_option('helpdesk_db_version', '0');
@@ -71,6 +72,9 @@ function helpdesk_activate() {
         
         // Always run create_tables - dbDelta is smart enough to handle schema changes
         \HelpDesk\Utils\Database::create_tables();
+        
+        // Run all migrations
+        \HelpDesk\Utils\Migrations::run_migrations();
         
         // Update database version
         update_option('helpdesk_db_version', $current_version);
