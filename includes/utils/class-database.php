@@ -85,8 +85,6 @@ class Database {
             email_1 LONGTEXT DEFAULT NULL,
             email_2 LONGTEXT DEFAULT NULL,
             popis_riesenia LONGTEXT DEFAULT NULL,
-            riesenie LONGTEXT DEFAULT NULL,
-            riesenie_2 LONGTEXT DEFAULT NULL,
             produkt BIGINT UNSIGNED DEFAULT NULL,
             podpis_id BIGINT UNSIGNED DEFAULT NULL,
             stav VARCHAR(50) DEFAULT 'novy',
