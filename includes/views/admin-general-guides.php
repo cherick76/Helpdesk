@@ -206,16 +206,6 @@ $products = Product::get_all();
                         </label>
                     </div>
                 </div>
-
-                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
-                    <h4><?php echo esc_html__( 'Linky', HELPDESK_TEXT_DOMAIN ); ?></h4>
-                    <div id="guide-links-container" style="margin-top: 10px; margin-bottom: 15px;">
-                        <!-- Links will be added here -->
-                    </div>
-                    <button type="button" class="button" id="btn-add-guide-link">
-                        <?php echo esc_html__( '+ Pridať link', HELPDESK_TEXT_DOMAIN ); ?>
-                    </button>
-                </div>
             </div>
 
             <div style="padding: 0 20px 20px 20px; border-top: 1px solid #ddd; text-align: right;">
@@ -228,70 +218,6 @@ $products = Product::get_all();
                 <button type="button" class="button button-danger" id="btn-delete-guide" style="display: none; float: left;">
                     <?php echo esc_html__( 'Vymazať', HELPDESK_TEXT_DOMAIN ); ?>
                 </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Link Modal -->
-<div id="helpdesk-guide-link-modal" class="helpdesk-modal" style="display: none;">
-    <div class="helpdesk-modal-content" style="width: 600px;">
-        <div class="helpdesk-modal-header">
-            <h2><?php echo esc_html__( 'Pridať/Editovať link', HELPDESK_TEXT_DOMAIN ); ?></h2>
-            <button class="helpdesk-modal-close">&times;</button>
-        </div>
-
-        <form id="guide-link-form">
-            <input type="hidden" id="link-id" name="id" value="">
-            <input type="hidden" id="link-navod-id" name="navod_id" value="">
-
-            <div style="padding: 20px;">
-                <div class="helpdesk-form-row">
-                    <div class="helpdesk-form-col-full">
-                        <label for="link-nazov" style="display: block; font-weight: 500; margin-bottom: 8px;">
-                            <?php echo esc_html__( 'Názov', HELPDESK_TEXT_DOMAIN ); ?> <span class="required">*</span>
-                        </label>
-                        <input type="text" id="link-nazov" name="nazov" required class="widefat" style="padding: 8px; box-sizing: border-box;">
-                        <span class="error-message" id="error-link_nazov"></span>
-                    </div>
-                </div>
-
-                <div class="helpdesk-form-row">
-                    <div class="helpdesk-form-col-full">
-                        <label for="link-url" style="display: block; font-weight: 500; margin-bottom: 8px;">
-                            <?php echo esc_html__( 'URL', HELPDESK_TEXT_DOMAIN ); ?> <span class="required">*</span>
-                        </label>
-                        <input type="url" id="link-url" name="url" required class="widefat" style="padding: 8px; box-sizing: border-box;">
-                        <span class="error-message" id="error-link_url"></span>
-                    </div>
-                </div>
-
-                <div class="helpdesk-form-row">
-                    <div class="helpdesk-form-col-full">
-                        <label for="link-produkt" style="display: block; font-weight: 500; margin-bottom: 8px;">
-                            <?php echo esc_html__( 'Produkt', HELPDESK_TEXT_DOMAIN ); ?>
-                        </label>
-                        <select id="link-produkt" name="produkt" class="widefat" style="padding: 8px; box-sizing: border-box;">
-                            <option value="0">-- <?php echo esc_html__( 'Nezvolené', HELPDESK_TEXT_DOMAIN ); ?> --</option>
-                            <?php foreach ( $products as $product ) : ?>
-                                <option value="<?php echo absint( $product['id'] ); ?>"><?php echo esc_html( $product['nazov'] ); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <span class="error-message" id="error-link_produkt"></span>
-                    </div>
-                </div>
-
-                <div style="margin-top: 20px; text-align: right; border-top: 1px solid #ddd; padding-top: 15px;">
-                    <button type="button" class="button helpdesk-modal-close-btn">
-                        <?php echo esc_html__( 'Zrušiť', HELPDESK_TEXT_DOMAIN ); ?>
-                    </button>
-                    <button type="submit" class="button button-primary">
-                        <?php echo esc_html__( 'Uložiť link', HELPDESK_TEXT_DOMAIN ); ?>
-                    </button>
-                    <button type="button" class="button button-danger" id="btn-delete-guide-link" style="display: none; float: left;">
-                        <?php echo esc_html__( 'Vymazať', HELPDESK_TEXT_DOMAIN ); ?>
-                    </button>
-                </div>
             </div>
         </form>
     </div>
@@ -334,40 +260,6 @@ $products = Product::get_all();
 .status-inactive {
     background-color: #f8d7da;
     color: #721c24;
-}
-
-.guide-link-item {
-    background: #f9f9f9;
-    padding: 12px;
-    margin: 8px 0;
-    border-radius: 4px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border: 1px solid #ddd;
-}
-
-.guide-link-item > div:first-child {
-    flex: 1;
-}
-
-.guide-link-item strong {
-    display: block;
-    margin-bottom: 4px;
-}
-
-.guide-link-item small {
-    color: #666;
-    word-break: break-all;
-}
-
-.guide-link-item .link-actions {
-    margin-left: 15px;
-    white-space: nowrap;
-}
-
-.guide-link-item .link-actions button {
-    margin-left: 8px;
 }
 
 .error-message {

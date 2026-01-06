@@ -6188,7 +6188,6 @@ console.log('admin.js file loaded - v1.0.1');
             $('#general-guide-form')[0].reset();
             $('#guide-modal-title').text('Pridať návod');
             $('#btn-delete-guide').hide();
-            $('#guide-links-container').html('');
             $('#helpdesk-guide-modal').show();
             $('.error-message').text('');
         });
@@ -6263,80 +6262,11 @@ console.log('admin.js file loaded - v1.0.1');
                         $('#guide-modal-title').text('Editovať návod');
                         $('#btn-delete-guide').show();
 
-                        // Load links
-                        renderGuideLinks(guide.links || []);
-
                         $('#helpdesk-guide-modal').show();
                         $('.error-message').text('');
                     }
                 }
             });
-        }
-
-        // Render guide links
-        function renderGuideLinks(links) {
-            let html = '';
-            if (links && links.length > 0) {
-                links.forEach(function(link) {
-                    html += '<div class="guide-link-item">';
-                    html += '<div>';
-                    html += '<strong>' + link.nazov + '</strong><br>';
-                    html += '<small><a href="' + link.url + '" target="_blank">' + link.url + '</a></small>';
-                    html += '</div>';
-                    html += '<div class="link-actions">';
-                    html += '<button type="button" class="button button-small edit-guide-link" data-link-id="' + link.id + '">Editovať</button>';
-                    html += '<button type="button" class="button button-small button-danger delete-guide-link" data-link-id="' + link.id + '">Vymazať</button>';
-                    html += '</div>';
-                    html += '</div>';
-                });
-            }
-            $('#guide-links-container').html(html);
-        }
-
-        // Add link button
-        $(document).on('click', '#btn-add-guide-link', function(e) {
-            e.preventDefault();
-            const guideId = $('#guide-id').val();
-            if (!guideId) {
-                alert('Najprv si ulož návod pred pridaním linky');
-                return;
-            }
-            openLinkModal(0, guideId);
-        });
-
-        // Edit link
-        $(document).on('click', '.edit-guide-link', function(e) {
-            e.preventDefault();
-            const linkId = $(this).data('link-id');
-            const guideId = $('#guide-id').val();
-            openLinkModal(linkId, guideId);
-        });
-
-        // Delete link
-        $(document).on('click', '.delete-guide-link', function(e) {
-            e.preventDefault();
-            const linkId = $(this).data('link-id');
-            if (confirm('Naozaj chcete vymazať túto linku?')) {
-                deleteGuideLink(linkId);
-            }
-        });
-
-        // Open link modal
-        function openLinkModal(linkId, guideId) {
-            $('#link-id').val(linkId || '');
-            $('#link-navod-id').val(guideId);
-            
-            if (linkId) {
-                // Edit mode - load link data
-                // For now, we'll load from current links
-                $('#btn-delete-guide-link').show();
-            } else {
-                // New mode
-                $('#guide-link-form')[0].reset();
-                $('#btn-delete-guide-link').hide();
-            }
-            
-            $('#helpdesk-guide-link-modal').show();
         }
 
         // Save guide
@@ -6412,67 +6342,10 @@ console.log('admin.js file loaded - v1.0.1');
         $(document).on('click', '#btn-delete-guide', function(e) {
             e.preventDefault();
             const guideId = $('#guide-id').val();
-            if (guideId && confirm('Naozaj chcete vymazať tento návod a všetky jeho linky?')) {
+            if (guideId && confirm('Naozaj chcete vymazať tento návod?')) {
                 deleteGuide(guideId);
             }
         });
-
-        // Save link
-        $(document).on('submit', '#guide-link-form', function(e) {
-            e.preventDefault();
-            
-            const data = {
-                action: 'helpdesk_save_guide_link',
-                nonce: nonce,
-                id: $('#link-id').val() || 0,
-                navod_id: $('#link-navod-id').val(),
-                nazov: $('#link-nazov').val(),
-                url: $('#link-url').val(),
-                produkt: $('#link-produkt').val()
-            };
-
-            $.ajax({
-                url: ajaxurl,
-                type: 'POST',
-                data: data,
-                dataType: 'json',
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.data.message);
-                        $('#helpdesk-guide-link-modal').hide();
-                        // Reload guide to refresh links
-                        const guideId = $('#guide-id').val();
-                        loadGuideForEdit(guideId);
-                    } else {
-                        alert('Chyba: ' + response.data.message);
-                    }
-                }
-            });
-        });
-
-        // Delete link
-        function deleteGuideLink(linkId) {
-            $.ajax({
-                url: ajaxurl,
-                type: 'POST',
-                data: {
-                    action: 'helpdesk_delete_guide_link',
-                    nonce: nonce,
-                    id: linkId
-                },
-                dataType: 'json',
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.data.message);
-                        $('#helpdesk-guide-link-modal').hide();
-                        const guideId = $('#guide-id').val();
-                        loadGuideForEdit(guideId);
-                    } else {
-                        alert('Chyba: ' + response.data.message);
-                    }
-                }
-            });
-        }
 
         console.log('=== initGeneralGuides finished ===');
     }
