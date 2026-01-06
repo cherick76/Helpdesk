@@ -81,7 +81,7 @@ class GuideResource extends BaseModel {
     /**
      * Get all resources
      */
-    public static function get_all() {
+    public static function get_all( $args = array() ) {
         global $wpdb;
         $table = $wpdb->prefix . 'hd_guide_resources';
         
