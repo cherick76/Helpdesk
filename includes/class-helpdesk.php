@@ -73,6 +73,7 @@ class HelpDesk {
         require_once HELPDESK_PLUGIN_DIR . 'includes/models/class-general-guide.php';
         require_once HELPDESK_PLUGIN_DIR . 'includes/models/class-link.php';
         require_once HELPDESK_PLUGIN_DIR . 'includes/models/class-guide-category.php';
+        require_once HELPDESK_PLUGIN_DIR . 'includes/models/class-guide-resource.php';
 
         // Load admin classes
         require_once HELPDESK_PLUGIN_DIR . 'includes/admin/class-admin.php';
