@@ -230,25 +230,33 @@ $signatures = Signature::get_all();
                 </div>
 
                 <div class="form-group">
-                    <label for="bug-riesenie">
-                        <?php echo esc_html__( 'Popis riešenia - 1. krok', HELPDESK_TEXT_DOMAIN ); ?>
+                    <label for="bug-email-1">
+                        <?php echo esc_html__( 'Email 1', HELPDESK_TEXT_DOMAIN ); ?>
                     </label>
-                    <textarea id="bug-riesenie" name="riesenie" rows="3"></textarea>
+                    <textarea id="bug-email-1" name="email_1" rows="3"></textarea>
                     <button type="button" id="btn-copy-solution" class="button" style="margin-top: 5px;">
                         <?php echo esc_html__( 'Kopírovať do clipboardu', HELPDESK_TEXT_DOMAIN ); ?>
                     </button>
-                    <span class="error-message" id="error-riesenie"></span>
+                    <span class="error-message" id="error-email_1"></span>
                 </div>
 
                 <div class="form-group">
-                    <label for="bug-riesenie-2">
-                        <?php echo esc_html__( 'Popis riešenia - 2. krok', HELPDESK_TEXT_DOMAIN ); ?>
+                    <label for="bug-email-2">
+                        <?php echo esc_html__( 'Email 2', HELPDESK_TEXT_DOMAIN ); ?>
                     </label>
-                    <textarea id="bug-riesenie-2" name="riesenie_2" rows="3"></textarea>
+                    <textarea id="bug-email-2" name="email_2" rows="3"></textarea>
                     <button type="button" id="btn-copy-solution-2" class="button" style="margin-top: 5px;">
                         <?php echo esc_html__( 'Kopírovať do clipboardu', HELPDESK_TEXT_DOMAIN ); ?>
                     </button>
-                    <span class="error-message" id="error-riesenie_2"></span>
+                    <span class="error-message" id="error-email_2"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="bug-popis-riesenia">
+                        <?php echo esc_html__( 'Popis', HELPDESK_TEXT_DOMAIN ); ?>
+                    </label>
+                    <textarea id="bug-popis-riesenia" name="popis_riesenia" rows="3"></textarea>
+                    <span class="error-message" id="error-popis_riesenia"></span>
                 </div>
 
                 <div class="form-group">

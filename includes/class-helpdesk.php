@@ -98,6 +98,7 @@ class HelpDesk {
         require_once HELPDESK_PLUGIN_DIR . 'includes/utils/class-database.php';
         require_once HELPDESK_PLUGIN_DIR . 'includes/utils/class-security.php';
         require_once HELPDESK_PLUGIN_DIR . 'includes/utils/class-query-cache.php';
+        require_once HELPDESK_PLUGIN_DIR . 'includes/utils/class-migrations.php';
     }
 
     /**
@@ -114,6 +115,10 @@ class HelpDesk {
      */
     public function initialize_modules() {
         error_log( 'DEBUG: initialize_modules called' );
+        
+        // Run database migrations
+        \HelpDesk\Utils\Migrations::run_migrations();
+        
         // Initialize frontend (always available)
         new \HelpDesk\Frontend\Frontend( $this->module_status );
 

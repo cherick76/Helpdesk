@@ -68,8 +68,9 @@ class BugsModule extends BaseModule {
             'popis' => Security::get_post_param( 'popis', '', 'textarea' ),
             'kod_chyby' => Security::get_post_param( 'kod_chyby', '', 'text' ),
             'produkt' => Security::get_post_param( 'produkt', 0, 'int' ),
-            'riesenie' => Security::get_post_param( 'riesenie', '', 'textarea' ),
-            'riesenie_2' => Security::get_post_param( 'riesenie_2', '', 'textarea' ),
+            'email_1' => Security::get_post_param( 'email_1', '', 'textarea' ),
+            'email_2' => Security::get_post_param( 'email_2', '', 'textarea' ),
+            'popis_riesenia' => Security::get_post_param( 'popis_riesenia', '', 'textarea' ),
             'podpis_id' => Security::get_post_param( 'podpis_id', null, 'int' ),
             'tagy' => Security::get_post_param( 'tagy', '', 'text' ),
         );

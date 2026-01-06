@@ -3341,11 +3341,11 @@ console.log('admin.js file loaded - v1.0.1');
                 });
             });
 
-            // Copy solution description to clipboard with optional signature
+            // Copy email solution to clipboard with optional signature
             $(document).on('click', '#btn-copy-solution', function() {
-                let textToCopy = $('#bug-riesenie').val();
+                let textToCopy = $('#bug-email-1').val();
                 if (!textToCopy.trim()) {
-                    alert('Popis riešenia je prázdny');
+                    alert('Email riešenia je prázdny');
                     return;
                 }
                 
@@ -3378,11 +3378,11 @@ console.log('admin.js file loaded - v1.0.1');
                 });
             });
 
-            // Copy solution description step 2 to clipboard with optional signature
+            // Copy solution description to clipboard with optional signature
             $(document).on('click', '#btn-copy-solution-2', function() {
-                let textToCopy = $('#bug-riesenie-2').val();
+                let textToCopy = $('#bug-email-2').val();
                 if (!textToCopy.trim()) {
-                    alert('Popis riešenia - 2. krok je prázdny');
+                    alert('Popis riešenia je prázdny');
                     return;
                 }
                 
@@ -3432,8 +3432,9 @@ console.log('admin.js file loaded - v1.0.1');
                         popis: $('#bug-popis').val(),
                         kod_chyby: $('#bug-kod_chyby').val(),
                         produkt: $('#bug-produkt').val(),
-                        riesenie: $('#bug-riesenie').val(),
-                        riesenie_2: $('#bug-riesenie-2').val(),
+                        email_1: $('#bug-email-1').val(),
+                        email_2: $('#bug-email-2').val(),
+                        popis_riesenia: $('#bug-popis-riesenia').val(),
                         podpis_id: $('#bug-podpis').val(),
                         tagy: $('#bug-tagy').val()
                     },
@@ -3507,8 +3508,9 @@ console.log('admin.js file loaded - v1.0.1');
                             $('#bug-popis').val(bug.popis);
                             $('#bug-kod_chyby').val(bug.kod_chyby);
                             $('#bug-produkt').val(bug.produkt);
-                            $('#bug-riesenie').val(bug.riesenie);
-                            $('#bug-riesenie-2').val(bug.riesenie_2 || '');
+                            $('#bug-email-1').val(bug.email_1 || bug.email_riesenia || bug.riesenie || '');
+                            $('#bug-email-2').val(bug.email_2 || bug.popis_riesenia || bug.riesenie_2 || '');
+                            $('#bug-popis-riesenia').val(bug.popis_riesenia || '');
                             $('#bug-podpis').val(bug.podpis_id || '');
                             
                             // Load full description from bug code if available
