@@ -4,12 +4,14 @@
  */
 
 use HelpDesk\Models\GuideResource;
+use HelpDesk\Models\GuideCategory;
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
 $resources = GuideResource::get_all();
+$categories = GuideCategory::get_all();
 ?>
 
 <div class="wrap">
@@ -107,10 +109,13 @@ $resources = GuideResource::get_all();
                         </label>
                         <select id="link-typ" name="typ" required class="widefat" style="padding: 8px; box-sizing: border-box;">
                             <option value="">-- <?php echo esc_html__( 'Vyberte typ', HELPDESK_TEXT_DOMAIN ); ?> --</option>
-                            <option value="produkt"><?php echo esc_html__( 'Produkt', HELPDESK_TEXT_DOMAIN ); ?></option>
-                            <option value="navod"><?php echo esc_html__( 'Návod', HELPDESK_TEXT_DOMAIN ); ?></option>
-                            <option value="dokumentacia"><?php echo esc_html__( 'Dokumentácia', HELPDESK_TEXT_DOMAIN ); ?></option>
-                            <option value="externe"><?php echo esc_html__( 'Externe', HELPDESK_TEXT_DOMAIN ); ?></option>
+                            <?php if ( ! empty( $categories ) ) : ?>
+                                <?php foreach ( $categories as $category ) : ?>
+                                    <option value="<?php echo esc_attr( $category['kategoria'] ); ?>">
+                                        <?php echo esc_html( $category['kategoria'] ); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </select>
                         <span class="error-message" id="error-link_typ"></span>
                     </div>

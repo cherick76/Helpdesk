@@ -13,7 +13,7 @@ $categories = GuideCategory::get_all();
 ?>
 
 <div class="wrap">
-    <h1><?php echo esc_html__( 'Kategórie návodov', HELPDESK_TEXT_DOMAIN ); ?></h1>
+    <h1><?php echo esc_html__( 'Typy návodov', HELPDESK_TEXT_DOMAIN ); ?></h1>
 
     <div class="helpdesk-admin-container">
         <div class="helpdesk-button-group">

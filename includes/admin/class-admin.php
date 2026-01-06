@@ -275,8 +275,8 @@ class Admin {
 
             add_submenu_page(
                 'helpdesk',
-                __( 'Kategórie návodov', HELPDESK_TEXT_DOMAIN ),
-                __( 'Kategórie návodov', HELPDESK_TEXT_DOMAIN ),
+                __( 'Typy návodov', HELPDESK_TEXT_DOMAIN ),
+                __( 'Typy návodov', HELPDESK_TEXT_DOMAIN ),
                 'manage_helpdesk',
                 'helpdesk-guide-categories',
                 array( $this, 'render_guide_categories' )
