@@ -190,6 +190,10 @@ $bugs = Bug::get_all();
     }
 
     .helpdesk-modal {
+        display: none !important;
+    }
+
+    .helpdesk-modal.show {
         display: flex !important;
     }
 
@@ -247,20 +251,20 @@ $bugs = Bug::get_all();
 
         // Close modal on close button click
         $(document).on('click', '.helpdesk-modal-close', function() {
-            $('#solution-detail-modal').hide();
+            $('#solution-detail-modal').removeClass('show').fadeOut();
         });
 
         // Close modal when clicking outside (on backdrop)
         $(document).on('click', '#solution-detail-modal', function(e) {
             if (e.target === this) {
-                $('#solution-detail-modal').hide();
+                $(this).removeClass('show').fadeOut();
             }
         });
 
         // Close modal on Escape key
         $(document).on('keydown', function(e) {
             if (e.keyCode === 27) { // Escape key
-                $('#solution-detail-modal').hide();
+                $('#solution-detail-modal').removeClass('show').fadeOut();
             }
         });
 
@@ -383,7 +387,7 @@ $bugs = Bug::get_all();
                             window.location.href = '?page=helpdesk-general-guides&edit=' + guideId;
                         });
 
-                        $('#solution-detail-modal').show();
+                        $('#solution-detail-modal').addClass('show').fadeIn();
                     }
                 }
             });
