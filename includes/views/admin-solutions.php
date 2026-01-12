@@ -159,7 +159,7 @@ $bugs = Bug::get_all();
         </div>
 
         <!-- Solution Detail Modal -->
-        <div id="solution-detail-modal" class="helpdesk-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
+        <div id="solution-detail-modal" class="helpdesk-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
             <div class="helpdesk-modal-content" style="width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto; background: white; border-radius: 8px; padding: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h2 id="solution-modal-title" style="margin: 0;"></h2>
@@ -251,20 +251,20 @@ $bugs = Bug::get_all();
 
         // Close modal on close button click
         $(document).on('click', '.helpdesk-modal-close', function() {
-            $('#solution-detail-modal').removeClass('show').fadeOut();
+            $('#solution-detail-modal').removeClass('show').css('display', 'none');
         });
 
         // Close modal when clicking outside (on backdrop)
         $(document).on('click', '#solution-detail-modal', function(e) {
             if (e.target === this) {
-                $(this).removeClass('show').fadeOut();
+                $(this).removeClass('show').css('display', 'none');
             }
         });
 
         // Close modal on Escape key
         $(document).on('keydown', function(e) {
             if (e.keyCode === 27) { // Escape key
-                $('#solution-detail-modal').removeClass('show').fadeOut();
+                $('#solution-detail-modal').removeClass('show').css('display', 'none');
             }
         });
 
@@ -387,7 +387,7 @@ $bugs = Bug::get_all();
                             window.location.href = '?page=helpdesk-general-guides&edit=' + guideId;
                         });
 
-                        $('#solution-detail-modal').addClass('show').fadeIn();
+                        $('#solution-detail-modal').addClass('show').css('display', 'flex');
                     }
                 }
             });
