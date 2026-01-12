@@ -30,6 +30,30 @@ class Migrations {
             update_option( 'helpdesk_db_version', '1.0.6' );
             error_log( 'Migration 1.0.6 completed' );
         }
+        
+        // Migration: Split zakaznicke_cislo into number and name (2025-01-08)
+        if ( version_compare( $db_version, '1.0.26', '<=' ) ) {
+            error_log( 'Running migration 1.0.27' );
+            self::migrate_split_project_name();
+            update_option( 'helpdesk_db_version', '1.0.27' );
+            error_log( 'Migration 1.0.27 completed' );
+        }
+
+        // Migration: Add zdroj column to standby table (2026-01-09)
+        if ( version_compare( $db_version, '1.0.27', '<' ) ) {
+            error_log( 'Running migration 1.0.28' );
+            self::migrate_add_standby_source_column();
+            update_option( 'helpdesk_db_version', '1.0.28' );
+            error_log( 'Migration 1.0.28 completed' );
+        }
+
+        // Migration: Add composite index for vacations table (2026-01-09)
+        if ( version_compare( $db_version, '1.0.28', '<=' ) ) {
+            error_log( 'Running migration 1.0.29' );
+            self::migrate_add_vacation_indexes();
+            update_option( 'helpdesk_db_version', '1.0.29' );
+            error_log( 'Migration 1.0.29 completed' );
+        }
     }
     
     /**
@@ -146,5 +170,110 @@ class Migrations {
         }
         
         error_log( '=== MIGRATION COMPLETE ===' );
+    }
+    
+    /**
+     * Migrate: Split zakaznicke_cislo into cislo and nazov
+     * Example: "1234-My Project" becomes zakaznicke_cislo="1234", nazov="My Project"
+     */
+    private static function migrate_split_project_name() {
+        global $wpdb;
+        
+        $table = Database::get_projects_table();
+        
+        // Add nazov column if it doesn't exist
+        $columns = $wpdb->get_col( "SHOW COLUMNS FROM $table" );
+        
+        if ( ! in_array( 'nazov', $columns ) ) {
+            error_log( 'Adding nazov column to ' . $table );
+            $wpdb->query( "ALTER TABLE `$table` ADD COLUMN `nazov` VARCHAR(255) NULL AFTER `zakaznicke_cislo`" );
+        }
+        
+        // Get all projects with dash in zakaznicke_cislo
+        $projects = $wpdb->get_results( "SELECT id, zakaznicke_cislo FROM $table WHERE zakaznicke_cislo LIKE '%-%' AND nazov IS NULL" );
+        
+        error_log( 'Found ' . count( $projects ) . ' projects to migrate' );
+        
+        foreach ( $projects as $project ) {
+            $cislo = '';
+            $nazov = '';
+            
+            // Extract number and flags: "1234-nw-My Project" or "1234-My Project"
+            if ( preg_match( '/^(\d+(?:-nw|-nwd|--?)*)-(.*?)$/i', $project->zakaznicke_cislo, $matches ) ) {
+                // Pattern matches: number[flags]-name
+                $cislo = trim( $matches[1] );      // "1234-nw" or "1234"
+                $nazov = trim( $matches[2] );      // "My Project"
+            } else {
+                // Fallback: split by first dash
+                $parts = explode( '-', $project->zakaznicke_cislo, 2 );
+                $cislo = trim( $parts[0] );
+                $nazov = isset( $parts[1] ) ? trim( $parts[1] ) : '';
+            }
+            
+            error_log( 'Migrating project ' . $project->id . ': "' . $project->zakaznicke_cislo . '" -> cislo="' . $cislo . '", nazov="' . $nazov . '"' );
+            
+            // Update project
+            $wpdb->query( $wpdb->prepare(
+                "UPDATE `$table` SET zakaznicke_cislo = %s, nazov = %s WHERE id = %d",
+                $cislo,
+                $nazov,
+                $project->id
+            ) );
+        }
+        
+        // Resize zakaznicke_cislo to 15 chars (to accommodate "1234-nw" or "1234-nwd")
+        $wpdb->query( "ALTER TABLE `$table` MODIFY COLUMN `zakaznicke_cislo` VARCHAR(15)" );
+        
+        error_log( 'Project name migration completed' );
+    }
+
+    /**
+     * Migrate: Add zdroj (source) column to standby table
+     * IS = imported from file, MP = manually added, AG = auto generated
+     */
+    private static function migrate_add_standby_source_column() {
+        global $wpdb;
+        
+        $table = Database::get_standby_table();
+        
+        // Check if zdroj column already exists
+        $columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table}" );
+        
+        if ( ! in_array( 'zdroj', $columns ) ) {
+            // Add zdroj column with ENUM type
+            $wpdb->query( "ALTER TABLE {$table} ADD COLUMN zdroj ENUM('IS', 'MP', 'AG') DEFAULT 'MP' COMMENT 'IS=Importované zo súboru, MP=Manuálne pridané, AG=Automaticky generované'" );
+            
+            // Add index for zdroj column
+            $wpdb->query( "ALTER TABLE {$table} ADD KEY idx_zdroj (zdroj)" );
+            
+            error_log( 'Added zdroj column to ' . $table );
+        } else {
+            error_log( 'Column zdroj already exists in ' . $table );
+        }
+    }
+
+    /**
+     * Migrate: Add composite index for vacations duplicate detection
+     * Improves performance of duplicate check queries
+     */
+    private static function migrate_add_vacation_indexes() {
+        global $wpdb;
+        
+        $table = Database::get_vacations_table();
+        
+        // Get existing indexes
+        $result = $wpdb->get_results( "SHOW INDEX FROM {$table}", ARRAY_A );
+        $existing_indexes = array();
+        foreach ( $result as $row ) {
+            $existing_indexes[] = $row['Key_name'];
+        }
+        
+        // Add composite index if it doesn't exist
+        if ( ! in_array( 'idx_meno_rozsah', $existing_indexes ) ) {
+            $wpdb->query( "ALTER TABLE {$table} ADD KEY idx_meno_rozsah (meno_pracovnika, nepritomnost_od, nepritomnost_do)" );
+            error_log( 'Added idx_meno_rozsah index to ' . $table );
+        } else {
+            error_log( 'Index idx_meno_rozsah already exists in ' . $table );
+        }
     }
 }

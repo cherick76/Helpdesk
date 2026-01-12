@@ -110,6 +110,7 @@ class Database {
             pohotovost_od DATE NOT NULL,
             pohotovost_do DATE NOT NULL,
             je_aktivna TINYINT(1) DEFAULT 1,
+            zdroj ENUM('IS', 'MP', 'AG') DEFAULT 'MP' COMMENT 'IS=Importované zo súboru, MP=Manuálne pridané, AG=Automaticky generované',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
@@ -118,6 +119,7 @@ class Database {
             KEY idx_pohotovost_od (pohotovost_od),
             KEY idx_pohotovost_do (pohotovost_do),
             KEY idx_pohotovost_aktualny (pohotovost_od, pohotovost_do, je_aktivna),
+            KEY idx_zdroj (zdroj),
             CONSTRAINT fk_standby_pracovnik FOREIGN KEY (pracovnik_id)
                 REFERENCES {$wpdb->prefix}hd_pracovnici(id)
                 ON DELETE CASCADE
@@ -234,6 +236,7 @@ class Database {
             KEY idx_nepritomnost_od (nepritomnost_od),
             KEY idx_nepritomnost_do (nepritomnost_do),
             KEY idx_pracovnik_rozsah (pracovnik_id, nepritomnost_od, nepritomnost_do),
+            KEY idx_meno_rozsah (meno_pracovnika, nepritomnost_od, nepritomnost_do),
             CONSTRAINT fk_absence_pracovnik FOREIGN KEY (pracovnik_id)
                 REFERENCES {$wpdb->prefix}hd_pracovnici(id)
                 ON DELETE SET NULL

@@ -29,6 +29,8 @@ class EmployeesModule extends BaseModule {
         add_action( 'wp_ajax_helpdesk_export_employees', array( $this, 'handle_export_employees' ) );
         add_action( 'wp_ajax_helpdesk_preview_import_employees', array( $this, 'handle_preview_import_employees' ) );
         add_action( 'wp_ajax_helpdesk_import_employees', array( $this, 'handle_import_employees' ) );
+        add_action( 'wp_ajax_helpdesk_import_employees_start', array( $this, 'handle_import_employees_start' ) );
+        add_action( 'wp_ajax_helpdesk_import_employees_batch', array( $this, 'handle_import_employees_batch' ) );
         add_action( 'wp_ajax_helpdesk_bulk_assign_projects', array( $this, 'handle_bulk_assign_projects' ) );
         add_action( 'wp_ajax_helpdesk_save_standby_batch', array( $this, 'handle_save_standby_batch' ) );
         add_action( 'wp_ajax_helpdesk_get_employee_vacation', array( $this, 'handle_get_employee_vacation' ) );
@@ -92,6 +94,9 @@ class EmployeesModule extends BaseModule {
             // Handle project assignments
             $this->update_employee_projects( $employee_id );
 
+            // Invalidate employees cache
+            $this->invalidate_employees_cache();
+
             wp_send_json_success( array(
                 'message' => __( 'Employee updated successfully', HELPDESK_TEXT_DOMAIN ),
                 'employee' => Security::escape_response( $employee->get_all_data() ),
@@ -111,6 +116,9 @@ class EmployeesModule extends BaseModule {
 
                 // Handle project assignments
                 $this->update_employee_projects( $id );
+
+                // Invalidate employees cache
+                $this->invalidate_employees_cache();
 
                 wp_send_json_success( array(
                     'message' => __( 'Employee created successfully', HELPDESK_TEXT_DOMAIN ),
@@ -149,6 +157,9 @@ class EmployeesModule extends BaseModule {
         }
 
         if ( $employee->delete() ) {
+            // Invalidate employees cache
+            $this->invalidate_employees_cache();
+
             wp_send_json_success( array( 'message' => __( 'Employee deleted successfully', HELPDESK_TEXT_DOMAIN ) ) );
         } else {
             wp_send_json_error( array( 'message' => __( 'Failed to delete employee', HELPDESK_TEXT_DOMAIN ) ) );
@@ -1066,5 +1077,173 @@ class EmployeesModule extends BaseModule {
 
         wp_send_json_error( array( 'message' => __( 'Failed to remove vacation', HELPDESK_TEXT_DOMAIN ) ) );
     }
+
+    /**
+     * START ASYNC IMPORT - Initialize batch session
+     */
+    public function handle_import_employees_start() {
+        if ( ! Security::verify_ajax_request() ) {
+            return;
+        }
+
+        if ( ! isset( $_FILES['csv_file'] ) ) {
+            wp_send_json_error( array( 'message' => __( 'Žádný súbor nahraný', HELPDESK_TEXT_DOMAIN ) ) );
+        }
+
+        $file = $_FILES['csv_file'];
+        
+        if ( ! empty( $file['error'] ) ) {
+            wp_send_json_error( array( 'message' => __( 'Chyba pri nahraní súboru', HELPDESK_TEXT_DOMAIN ) ) );
+        }
+
+        // Čítať obsah súboru
+        if ( ! file_exists( $file['tmp_name'] ) ) {
+            wp_send_json_error( array( 'message' => __( 'Súbor nebol nájdený', HELPDESK_TEXT_DOMAIN ) ) );
+        }
+
+        $content = file_get_contents( $file['tmp_name'] );
+        if ( ! $content ) {
+            wp_send_json_error( array( 'message' => __( 'Chyba pri čítaní súboru', HELPDESK_TEXT_DOMAIN ) ) );
+        }
+
+        // Parseovať CSV
+        require_once HELPDESK_PLUGIN_DIR . 'includes/utils/class-csv.php';
+        $rows = \HelpDesk\Utils\CSV::parse( $content );
+
+        if ( empty( $rows ) ) {
+            wp_send_json_error( array( 'message' => __( 'CSV súbor je prázdny', HELPDESK_TEXT_DOMAIN ) ) );
+        }
+
+        // Vytvoriť batch session
+        $batch_size = 50;
+        $total_batches = ceil( count( $rows ) / $batch_size );
+        $session_id = 'emp-import-' . wp_generate_uuid4();
+
+        // Uložiť session data do transientu (1 hodina)
+        set_transient( 'helpdesk_import_' . $session_id, array(
+            'rows' => $rows,
+            'total_rows' => count( $rows ),
+            'total_batches' => $total_batches,
+            'batch_size' => $batch_size,
+            'processed' => 0,
+            'created_at' => time()
+        ), 3600 );
+
+        wp_send_json_success( array(
+            'session_id' => $session_id,
+            'total_rows' => count( $rows ),
+            'total_batches' => $total_batches,
+            'message' => sprintf( __( 'Spracovanie %d pracovníkov v %d dávkach', HELPDESK_TEXT_DOMAIN ), count( $rows ), $total_batches )
+        ) );
+    }
+
+    /**
+     * PROCESS BATCH - Import 50 employees at a time
+     */
+    public function handle_import_employees_batch() {
+        if ( ! Security::verify_ajax_request() ) {
+            return;
+        }
+
+        $session_id = isset( $_POST['session_id'] ) ? sanitize_text_field( $_POST['session_id'] ) : '';
+        $batch_num = isset( $_POST['batch_num'] ) ? intval( $_POST['batch_num'] ) : 0;
+
+        if ( ! $session_id || $batch_num < 1 ) {
+            wp_send_json_error( array( 'message' => __( 'Neplatné parametre', HELPDESK_TEXT_DOMAIN ) ) );
+        }
+
+        // Načítať session
+        $session = get_transient( 'helpdesk_import_' . $session_id );
+        if ( ! $session ) {
+            wp_send_json_error( array( 'message' => __( 'Relácia vypršala', HELPDESK_TEXT_DOMAIN ) ) );
+        }
+
+        $rows = $session['rows'];
+        $batch_size = $session['batch_size'];
+        $offset = ( $batch_num - 1 ) * $batch_size;
+        $batch_rows = array_slice( $rows, $offset, $batch_size );
+
+        // Auto-detect columns
+        $sample_row = isset( $rows[0] ) ? $rows[0] : array();
+        $name_column = isset( $sample_row['Pracovník'] ) ? 'Pracovník' : (isset( $sample_row['Meno a priezvisko'] ) ? 'Meno a priezvisko' : null);
+        $phone_column = isset( $sample_row['Telefón'] ) ? 'Telefón' : (isset( $sample_row['Klapka'] ) ? 'Klapka' : null);
+        $mobile_column = isset( $sample_row['Mobil'] ) ? 'Mobil' : null;
+
+        if ( ! $name_column || ! $phone_column ) {
+            wp_send_json_error( array( 'message' => __( 'CSV súbor má chybný formát - chýbajú stĺpce', HELPDESK_TEXT_DOMAIN ) ) );
+        }
+
+        $imported = 0;
+        $updated = 0;
+        $errors = array();
+
+        // Spracovať jednu dávku
+        foreach ( $batch_rows as $index => $row ) {
+            $meno_priezvisko = isset( $row[$name_column] ) ? \HelpDesk\Utils\CSV::sanitize_value( $row[$name_column] ) : '';
+            $klapka = isset( $row[$phone_column] ) ? \HelpDesk\Utils\CSV::sanitize_value( $row[$phone_column] ) : '';
+            $mobil = $mobile_column && isset( $row[$mobile_column] ) ? \HelpDesk\Utils\CSV::sanitize_value( $row[$mobile_column] ) : '';
+
+            if ( empty( $meno_priezvisko ) ) {
+                continue;
+            }
+
+            global $wpdb;
+            $table = Database::get_employees_table();
+
+            // Hľadať existujúceho pracovníka
+            $existing = $wpdb->get_row(
+                $wpdb->prepare( "SELECT id FROM {$table} WHERE meno_priezvisko = %s", $meno_priezvisko ),
+                ARRAY_A
+            );
+
+            if ( $existing ) {
+                // UPDATE
+                $wpdb->update(
+                    $table,
+                    array( 'klapka' => $klapka, 'mobil' => $mobil ),
+                    array( 'id' => $existing['id'] ),
+                    array( '%s', '%s' ),
+                    array( '%d' )
+                );
+                $updated++;
+            } else {
+                // INSERT
+                $wpdb->insert(
+                    $table,
+                    array( 'meno_priezvisko' => $meno_priezvisko, 'klapka' => $klapka, 'mobil' => $mobil ),
+                    array( '%s', '%s', '%s' )
+                );
+                $imported++;
+            }
+        }
+
+        // Aktualizovať session
+        $session['processed'] = min( $offset + $batch_size, $session['total_rows'] );
+        set_transient( 'helpdesk_import_' . $session_id, $session, 3600 );
+
+        wp_send_json_success( array(
+            'batch_num' => $batch_num,
+            'total_batches' => $session['total_batches'],
+            'progress' => round( ( $session['processed'] / $session['total_rows'] ) * 100 ),
+            'imported' => $imported,
+            'updated' => $updated,
+            'message' => sprintf( __( 'Dávka %d/%d: +%d nových, +%d aktualizovaných', HELPDESK_TEXT_DOMAIN ), 
+                $batch_num, $session['total_batches'], $imported, $updated )
+        ) );
+    }
+
+    /**
+     * Invalidate employees cache
+     */
+    private function invalidate_employees_cache() {
+        global $wpdb;
+        $wpdb->query(
+            $wpdb->prepare(
+                "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+                '%transient_helpdesk_cache_model_employee%'
+            )
+        );
+    }
 }
+
 

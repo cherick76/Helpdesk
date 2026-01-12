@@ -43,6 +43,7 @@ class BugsModule extends BaseModule {
         add_action( 'wp_ajax_helpdesk_get_contact', array( $this, 'handle_get_contact' ) );
         add_action( 'wp_ajax_helpdesk_get_contacts', array( $this, 'handle_get_contacts' ) );
         add_action( 'wp_ajax_helpdesk_search_bugs', array( $this, 'handle_search_bugs' ) );
+        add_action( 'wp_ajax_helpdesk_get_solutions_for_code', array( $this, 'handle_get_solutions_for_code' ) );
     }
 
     /**
@@ -715,38 +716,45 @@ class BugsModule extends BaseModule {
      */
     public function handle_search_bugs() {
         if ( ! Security::verify_ajax_request() ) {
+            wp_send_json_error( array( 'message' => 'Nonce failed' ) );
             return;
         }
 
-        // Get search term
-        $search_term = Security::get_post_param( 'search', '', 'text' );
+        $search_term = isset( $_POST['search'] ) ? sanitize_text_field( $_POST['search'] ) : '';
 
-        if ( empty( $search_term ) ) {
+        if ( empty( $search_term ) || strlen( $search_term ) < 2 ) {
             wp_send_json_success( array( 'bugs' => array() ) );
-            wp_die();
+            return;
         }
 
         global $wpdb;
         $bugs_table = \HelpDesk\Utils\Database::get_bugs_table();
         $products_table = \HelpDesk\Utils\Database::get_products_table();
-        $like = '%' . $wpdb->esc_like( $search_term ) . '%';
+        
+        $search = '%' . $wpdb->esc_like( $search_term ) . '%';
 
-        // Search in kod_chyby, nazov, tagy with product name lookup
-        $bugs = $wpdb->get_results(
-            $wpdb->prepare(
-                "SELECT b.*, p.nazov as product_name FROM {$bugs_table} b 
-                 LEFT JOIN {$products_table} p ON b.produkt = p.id
-                 WHERE b.kod_chyby LIKE %s OR b.nazov LIKE %s OR b.tagy LIKE %s 
-                 ORDER BY b.nazov ASC LIMIT 20",
-                $like,
-                $like,
-                $like
-            ),
-            ARRAY_A
-        );
+        $query = "SELECT 
+                    b.id,
+                    b.nazov,
+                    b.kod_chyby,
+                    b.produkt,
+                    b.tagy,
+                    b.datum_zaznamu,
+                    COALESCE(p.nazov, '--') as product_name
+                FROM {$bugs_table} b
+                LEFT JOIN {$products_table} p ON b.produkt = p.id
+                WHERE b.nazov LIKE %s 
+                   OR b.kod_chyby LIKE %s
+                   OR b.tagy LIKE %s
+                ORDER BY b.nazov ASC
+                LIMIT 20";
 
-        wp_send_json_success( array( 'bugs' => $bugs ? $bugs : array() ) );
-        wp_die();
+        $results = $wpdb->get_results( $wpdb->prepare( $query, $search, $search, $search ), ARRAY_A );
+
+        wp_send_json_success( array(
+            'bugs' => $results ? $results : array(),
+            'count' => count( $results ? $results : array() )
+        ) );
     }
 
     /**
@@ -778,5 +786,63 @@ class BugsModule extends BaseModule {
         }
 
         wp_send_json_success( array( 'code' => $code ) );
+    }
+
+    /**
+     * Handle getting solutions for bug code
+     */
+    public function handle_get_solutions_for_code() {
+        // Check nonce
+        $nonce = isset( $_POST['_ajax_nonce'] ) ? $_POST['_ajax_nonce'] : '';
+        if ( ! wp_verify_nonce( $nonce, 'helpdesk_nonce' ) ) {
+            error_log( 'Nonce verification failed' );
+            wp_send_json_error( array( 'message' => 'Nonce verification failed' ) );
+            return;
+        }
+
+        // Check if user is logged in
+        if ( ! is_user_logged_in() ) {
+            error_log( 'User not logged in' );
+            wp_send_json_error( array( 'message' => 'User not logged in' ) );
+            return;
+        }
+
+        $code_id = isset( $_POST['code_id'] ) ? intval( $_POST['code_id'] ) : 0;
+
+        if ( empty( $code_id ) ) {
+            error_log( 'Code ID is empty' );
+            wp_send_json_error( array( 'message' => 'Code ID is required' ) );
+            return;
+        }
+
+        global $wpdb;
+        
+        try {
+            // Get bug code to get the kod value
+            $codes_table = \HelpDesk\Utils\Database::get_bug_codes_table();
+            $code = $wpdb->get_row(
+                $wpdb->prepare( "SELECT kod FROM {$codes_table} WHERE id = %d", $code_id ),
+                ARRAY_A
+            );
+
+            if ( ! $code ) {
+                error_log( 'Code not found for ID: ' . $code_id );
+                wp_send_json_error( array( 'message' => 'Problem not found' ) );
+                return;
+            }
+
+            // Get all bugs with this code
+            $bugs_table = \HelpDesk\Utils\Database::get_bugs_table();
+            $solutions = $wpdb->get_results(
+                $wpdb->prepare( "SELECT id, nazov FROM {$bugs_table} WHERE kod_chyby = %s ORDER BY nazov ASC", $code['kod'] ),
+                ARRAY_A
+            );
+
+            error_log( 'Solutions found: ' . count( $solutions ) . ' for code: ' . $code['kod'] );
+            wp_send_json_success( array( 'solutions' => $solutions ? $solutions : array() ) );
+        } catch ( \Exception $e ) {
+            error_log( 'Exception in handle_get_solutions_for_code: ' . $e->getMessage() );
+            wp_send_json_error( array( 'message' => 'Exception: ' . $e->getMessage() ) );
+        }
     }
 }

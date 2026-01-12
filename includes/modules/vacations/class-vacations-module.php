@@ -27,6 +27,8 @@ class VacationsModule extends BaseModule {
         add_action( 'wp_ajax_helpdesk_update_vacation', array( $this, 'handle_update_vacation' ) );
         add_action( 'wp_ajax_helpdesk_delete_vacation', array( $this, 'handle_delete_vacation' ) );
         add_action( 'wp_ajax_helpdesk_delete_all_vacations', array( $this, 'handle_delete_all_vacations' ) );
+        add_action( 'wp_ajax_helpdesk_check_vacation_duplicates', array( $this, 'handle_check_vacation_duplicates' ) );
+        add_action( 'wp_ajax_helpdesk_delete_old_vacations', array( $this, 'handle_delete_old_vacations' ) );
     }
 
     /**
@@ -114,6 +116,7 @@ class VacationsModule extends BaseModule {
 
         $imported = 0;
         $errors = [];
+        $seen_records = array(); // Track duplicates within CSV
 
         foreach ( $lines as $line_number => $line ) {
             $row_number = $line_number + 2;
@@ -155,6 +158,37 @@ class VacationsModule extends BaseModule {
                 }
             } catch ( Exception $e ) {
                 $errors[] = sprintf( __( 'Row %d: Date parse error', HELPDESK_TEXT_DOMAIN ), $row_number );
+                continue;
+            }
+
+            // Validate that od is before do
+            if ( $od_date > $do_date ) {
+                $errors[] = sprintf( __( 'Row %d: Nepritomnosť od musí byť pred nepritomnosťou do', HELPDESK_TEXT_DOMAIN ), $row_number );
+                continue;
+            }
+
+            // Check for duplicates within CSV (same employee and overlapping dates)
+            $duplicate_key = $pracovnik_meno . '_' . $od_date . '_' . $do_date;
+            if ( isset( $seen_records[ $duplicate_key ] ) ) {
+                $errors[] = sprintf( __( 'Row %d: Duplikát - rovnaký pracovník a период (už pridaný v CSV)', HELPDESK_TEXT_DOMAIN ), $row_number );
+                continue;
+            }
+            $seen_records[ $duplicate_key ] = true;
+
+            // Check for overlapping dates with existing records in database
+            $existing_overlap = $wpdb->get_row( $wpdb->prepare(
+                "SELECT id FROM {$vacations_table} 
+                 WHERE meno_pracovnika = %s 
+                 AND nepritomnost_od <= %s 
+                 AND nepritomnost_do >= %s
+                 LIMIT 1",
+                $pracovnik_meno,
+                $do_date,
+                $od_date
+            ) );
+
+            if ( $existing_overlap ) {
+                $errors[] = sprintf( __( 'Row %d: Konflikt - overlappinguje s existujúcim záznamom pre %s', HELPDESK_TEXT_DOMAIN ), $row_number, $pracovnik_meno );
                 continue;
             }
 
@@ -354,6 +388,22 @@ class VacationsModule extends BaseModule {
         global $wpdb;
         $vacations_table = Database::get_vacations_table();
 
+        // Check for duplicate records - overlapping dates for same employee
+        $check_sql = $wpdb->prepare(
+            "SELECT id FROM " . $vacations_table . " 
+             WHERE id != %d AND meno_pracovnika = %s 
+             AND nepritomnost_od <= %s AND nepritomnost_do >= %s",
+            $vacation_id,
+            $meno,
+            $do,       // Check if existing period ends after our start
+            $od        // Check if existing period starts before our end
+        );
+        $existing = $wpdb->get_var( $check_sql );
+
+        if ( $existing ) {
+            wp_send_json_error( array( 'message' => __( 'Nepritomnosť sa prekrýva s existujúcou dovolenkovou (duplikát)', HELPDESK_TEXT_DOMAIN ) ) );
+        }
+
         $result = $wpdb->update(
             $vacations_table,
             array(
@@ -402,5 +452,96 @@ class VacationsModule extends BaseModule {
             'Á' => 'A', 'Ä' => 'A', 'É' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ô' => 'O', 'Ú' => 'U', 'Ý' => 'Y',
         );
         return strtr( $str, $chars );
+    }
+
+    /**
+     * Handle check vacation duplicates AJAX
+     */
+    public function handle_check_vacation_duplicates() {
+        if ( ! Security::verify_ajax_request() ) {
+            return;
+        }
+
+        global $wpdb;
+        $vacations_table = Database::get_vacations_table();
+
+        // Simple approach: find any overlapping periods using direct SQL with limit
+        // This avoids O(n²) PHP loops with large datasets
+        $sql = "SELECT v1.id as id1, v1.meno_pracovnika, v1.nepritomnost_od as od1, v1.nepritomnost_do as do1,
+                       v2.id as id2, v2.nepritomnost_od as od2, v2.nepritomnost_do as do2
+                FROM {$vacations_table} v1
+                INNER JOIN {$vacations_table} v2 
+                  ON v1.meno_pracovnika = v2.meno_pracovnika 
+                  AND v1.id < v2.id
+                  AND v1.nepritomnost_od <= v2.nepritomnost_do 
+                  AND v1.nepritomnost_do >= v2.nepritomnost_od
+                ORDER BY v1.meno_pracovnika, v1.nepritomnost_od
+                LIMIT 100";
+
+        $dups = $wpdb->get_results( $sql, ARRAY_A );
+
+        if ( ! $dups ) {
+            wp_send_json_success( array(
+                'message' => 'Žiadne duplikáty',
+                'count' => 0,
+                'duplicates' => array(),
+            ) );
+            return;
+        }
+
+        $formatted = array();
+        foreach ( $dups as $d ) {
+            $formatted[] = array(
+                'employee' => $d['meno_pracovnika'],
+                'record1' => array(
+                    'id' => $d['id1'],
+                    'od' => $d['od1'],
+                    'do' => $d['do1'],
+                ),
+                'record2' => array(
+                    'id' => $d['id2'],
+                    'od' => $d['od2'],
+                    'do' => $d['do2'],
+                ),
+            );
+        }
+
+        wp_send_json_success( array(
+            'message' => 'Nájdené duplikáty: ' . count( $formatted ),
+            'count' => count( $formatted ),
+            'duplicates' => $formatted,
+        ) );
+    }
+
+    /**
+     * Handle delete old vacations AJAX
+     */
+    public function handle_delete_old_vacations() {
+        if ( ! Security::verify_ajax_request() ) {
+            return;
+        }
+
+        global $wpdb;
+        $vacations_table = Database::get_vacations_table();
+        $today = date( 'Y-m-d' );
+
+        $before = intval( $wpdb->get_var( "SELECT COUNT(*) FROM {$vacations_table}" ) );
+
+        // Direct DELETE without pre-SELECT for speed
+        $deleted = $wpdb->query( "DELETE FROM {$vacations_table} WHERE nepritomnost_do < '{$today}'" );
+
+        $after = intval( $wpdb->get_var( "SELECT COUNT(*) FROM {$vacations_table}" ) );
+
+        if ( $deleted === false ) {
+            wp_send_json_error( array( 'message' => 'Chyba: ' . $wpdb->last_error ) );
+            return;
+        }
+
+        wp_send_json_success( array(
+            'message' => "Vymazané: $deleted (bolo $before, zostalo $after)",
+            'deleted' => $deleted,
+            'before' => $before,
+            'after' => $after,
+        ) );
     }
 }

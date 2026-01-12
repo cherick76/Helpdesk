@@ -3,12 +3,18 @@
  * Last updated: 2024-12-18 12:00:00
  */
 
-console.log('admin.js file loaded - v1.0.1');
 
 (function($) {
     'use strict';
 
-    console.log('IIFE started, waiting for document.ready');
+
+    // Helper function to escape HTML
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
 
     // Global variables accessible to all functions
     let nonce;
@@ -24,7 +30,6 @@ console.log('admin.js file loaded - v1.0.1');
     // Wait for document ready
     $(document).ready(function() {
         if (typeof helpdesk === 'undefined') {
-            console.error('HelpDesk object not found!');
             return;
         }
 
@@ -41,10 +46,6 @@ console.log('admin.js file loaded - v1.0.1');
             show_nw_projects: false,
         };
 
-        console.log('HelpDesk initialized with nonce:', nonce, 'ajaxurl:', ajaxurl);
-        console.log('Dashboard Filters:', dashboardFilters);
-        console.log('show_nw_projects value:', dashboardFilters.show_nw_projects);
-        console.log('show_nw_projects type:', typeof dashboardFilters.show_nw_projects);
         
         // ===== EMPLOYEES =====
         initEmployees();
@@ -82,21 +83,15 @@ console.log('admin.js file loaded - v1.0.1');
             // If not provided, try to get from JSON
             if (employeesList === undefined) {
                 const employeesJson = $('#project-employees-json').val();
-                console.log('renderProjectEmployeesList called without employees list');
-                console.log('employeesJson raw value:', employeesJson);
                 
                 if (employeesJson) {
                     try {
                         employees = JSON.parse(employeesJson);
-                        console.log('Parsed employees from JSON:', employees);
                     } catch(e) {
-                        console.error('Error parsing employees JSON:', e);
                     }
                 } else {
-                    console.log('employeesJson is empty!');
                 }
             } else {
-                console.log('renderProjectEmployeesList called with', employees.length, 'employees');
             }
             
             // Get existing HTML to check for changes
@@ -119,7 +114,6 @@ console.log('admin.js file loaded - v1.0.1');
             
             // If adding new employees (not just re-rendering), add them to existing list
             if (!allExist && existingIds.length > 0) {
-                console.log('Adding new employees to existing list');
                 employees.forEach(emp => {
                     const empId = emp.id;
                     // Check if this employee already exists in the list
@@ -194,571 +188,92 @@ console.log('admin.js file loaded - v1.0.1');
         // ===== BUGS =====
         initBugs();
 
-        // ===== DASHBOARD PROJECT SEARCH =====
-        console.log('=== Dashboard Search Init Start ===');
-        console.log('AJAX Config - ajaxurl:', ajaxurl, 'nonce:', nonce);
-        
-        var $searchInput = $('#dashboard-project-search');
-        var $searchResults = $('#dashboard-search-results');
-        var $searchResultsTbody = $('#dashboard-search-results-tbody');
-        var $noResults = $('#dashboard-no-results');
-        var $resultsCount = $('#dashboard-results-count');
-        
-        console.log('Search input found:', $searchInput.length > 0);
-        console.log('Search results div found:', $searchResults.length > 0);
-        
-        if ($searchInput.length > 0) {
-            console.log('✓ Dashboard project search initialized');
+        // ===== DASHBOARD BUG SEARCH =====
+        setTimeout(function() {
+            var inp = $('#dashboard-bug-search');
+            if (inp.length === 0) return;
             
-            $searchInput.on('keyup', function(e) {
-                const val = $(this).val().trim();
-                console.log('⌨️ Keyup event - value:', val, 'length:', val.length);
-                
-                if (val.length < 1) {
-                    $searchResults.hide();
-                    $noResults.show();
+            inp.on('keyup', function() {
+                var val = $(this).val().trim();
+                if (val.length < 2) {
+                    $('#dashboard-bug-search-results').hide();
+                    $('#dashboard-no-bugs').show();
                     return;
                 }
                 
-                if (val.length === 1) {
-                    $searchResults.hide();
-                    $noResults.show();
-                    return;
-                }
-                
-                if (val.length >= 2) {
-                    console.log('🔍 Sending AJAX search for:', val);
-                    console.log('AJAX data:', {
-                        action: 'helpdesk_search_projects',
-                        _wpnonce: nonce,
-                        search: val
-                    });
-                    
-                    $.ajax({
-                        url: ajaxurl,
-                        type: 'POST',
-                        data: {
-                            action: 'helpdesk_search_projects',
-                            _wpnonce: nonce,
-                            search: val
-                        },
-                        dataType: 'json',
-                        success: function(response) {
-                            console.log('✓ AJAX success:', response);
+                $.post(ajaxurl, {
+                    action: 'helpdesk_search_bugs',
+                    _wpnonce: nonce,
+                    search: val
+                }, function(resp) {
+                    if (resp.success && resp.data.bugs && resp.data.bugs.length > 0) {
+                        var rows = '';
+                        $.each(resp.data.bugs, function(i, bug) {
+                            rows += '<tr><td>' + (bug.nazov || '') + '</td>';
+                            rows += '<td>' + (bug.product_name || '--') + '</td>';
+                            rows += '<td>';
                             
-                            if (response.success && response.data && response.data.projects) {
-                                console.log('Projects array:', response.data.projects);
-                                console.log('Projects count:', response.data.projects.length);
-                                
-                                if (response.data.projects.length > 0) {
-                                    console.log('Rendering projects...');
-                                    let html = '';
-                                    
-                                    // Projects are already filtered on server side
-                                    let filteredProjects = response.data.projects;
-                                    
-                                    filteredProjects.forEach(function(project, idx) {
-                                        console.log('Rendering project ' + idx + ':', project);
-                                        
-                                        // Oddeliť pracovníkov na priamych a pohotovostných
-                                        let directEmployees = [];
-                                        let standbyEmployees = [];
-                                        
-                                        if (project.employees && project.employees.length > 0) {
-                                            project.employees.forEach(function(emp) {
-                                                if (emp.emp_type === 'standby') {
-                                                    standbyEmployees.push(emp);
-                                                } else {
-                                                    directEmployees.push(emp);
-                                                }
-                                            });
-                                        }
-                                        
-                                        // Projekt card s pracovníkmi
-                                        html += '<div class="project-item" data-project-id="' + project.id + '">';
-                                        html += '<div class="project-name">' + (project.zakaznicke_cislo || '') + ' - ' + (project.nazov || '') + '</div>';
-                                        
-                                        // HD Kontakt - Spôsob komunikácie
-                                        if (project.hd_kontakt) {
-                                            html += '<div style="font-size: 11px; color: #666; margin-top: 4px; font-style: italic;">📞 HD Kontakt: ' + (project.hd_kontakt || '') + '</div>';
-                                        }
-                                        
-                                        // PRIAMI PRACOVNÍCI
-                                        if (directEmployees.length > 0) {
-                                            html += '<div class="project-employees" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">';
-                                            html += '<div style="font-size: 12px; font-weight: bold; color: #333; margin-bottom: 5px;">👥 Priradení pracovníci (' + directEmployees.length + '):</div>';
-                                            
-                                            directEmployees.forEach(function(emp) {
-                                                const today = new Date().toISOString().split('T')[0];
-                                                
-                                                // Kontrola dovolenky
-                                                const isOnVacation = emp.nepritomnost_od && emp.nepritomnost_do && 
-                                                    today >= emp.nepritomnost_od && today <= emp.nepritomnost_do;
-                                                
-                                                // Kontrola pohotovosti
-                                                const hasStandbyToday = emp.has_standby === 1 || emp.has_standby === true || emp.has_standby === '1';
-                                                
-                                                let empDisplay = emp.meno_priezvisko || 'N/A';
-                                                if (emp.klapka) {
-                                                    empDisplay += ' (' + emp.klapka + ')';
-                                                }
-                                                if (emp.mobil) {
-                                                    empDisplay += ' | ' + emp.mobil;
-                                                }
-                                                
-                                                // Pridaj ikonky
-                                                let prefix = '';
-                                                if (hasStandbyToday) {
-                                                    prefix += '\u{1F6A8} ';
-                                                }
-                                                if (parseInt(emp.is_hlavny) === 1) {
-                                                    prefix += '⭐ ';
-                                                }
-                                                
-                                                // Prečiarknutie ak je na dovolenke
-                                                let displayStyle = 'font-size: 12px; padding: 3px 0; color: #333;';
-                                                if (isOnVacation) {
-                                                    displayStyle += ' text-decoration: line-through; color: #999;';
-                                                    empDisplay = prefix + '🏖️ ' + empDisplay;
-                                                } else {
-                                                    empDisplay = prefix + empDisplay;
-                                                }
-                                                
-                                                html += '<div style="' + displayStyle + '">' + empDisplay + '</div>';
-                                            });
-                                            
-                                            html += '</div>';
-                                        }
-                                        
-                                        // POHOTOVOSTNÍ PRACOVNÍCI
-                                        if (standbyEmployees.length > 0) {
-                                            html += '<div class="project-standby" style="margin-top: 10px; padding: 8px; background-color: #fff3cd; border-left: 3px solid #ff9800; border-radius: 3px;">';
-                                            html += '<div style="font-size: 12px; font-weight: bold; color: #ff6f00; margin-bottom: 5px;">🚨 Pohotovosť (' + standbyEmployees.length + '):</div>';
-                                            
-                                            standbyEmployees.forEach(function(emp) {
-                                                const today = new Date().toISOString().split('T')[0];
-                                                
-                                                // Kontrola dovolenky
-                                                const isOnVacation = emp.nepritomnost_od && emp.nepritomnost_do && 
-                                                    today >= emp.nepritomnost_od && today <= emp.nepritomnost_do;
-                                                
-                                                let empDisplay = emp.meno_priezvisko || 'N/A';
-                                                if (emp.klapka) {
-                                                    empDisplay += ' (' + emp.klapka + ')';
-                                                }
-                                                if (emp.mobil) {
-                                                    empDisplay += ' | ' + emp.mobil;
-                                                }
-                                                
-                                                // Prečiarknutie ak je na dovolenke
-                                                let spanStyle = '';
-                                                if (isOnVacation) {
-                                                    spanStyle = ' style="text-decoration: line-through; color: #999;"';
-                                                    empDisplay = prefix + '🏖️ ' + empDisplay;
-                                                } else {
-                                                    empDisplay = prefix + empDisplay;
-                                                }
-                                                
-                                                html += '<div style="font-size: 12px; padding: 3px 0; color: #333; display: flex; justify-content: space-between; align-items: center;">';
-                                                html += '<span' + spanStyle + '>' + empDisplay + '</span>';
-                                                html += '<button class="button button-small helpdesk-add-standby-btn" data-project-id="' + project.id + '" data-employee-id="' + emp.id + '" style="height: 24px; padding: 0 8px; font-size: 11px;">Pridať</button>';
-                                                html += '</div>';
-                                            });
-                                            
-                                            html += '</div>';
-                                        }
-                                        
-                                        if (directEmployees.length === 0 && standbyEmployees.length === 0) {
-                                            html += '<div style="font-size: 12px; color: #999; margin-top: 5px;">Žiadni pracovníci</div>';
-                                        }
-                                        
-                                        html += '</div>';
-                                    });
-                                    
-                                    console.log('HTML ready:', html);
-                                    
-                                    // Check if we have filtered projects
-                                    if (filteredProjects.length === 0 && response.data.projects.length > 0) {
-                                        // All projects were filtered out
-                                        $searchResultsTbody.html('<div style="padding: 20px; text-align: center; color: #999;">Všetky nájdené projekty boli filtrované (nastavenia - projekty s "-nw").</div>');
-                                        $searchResults.hide();
-                                        $noResults.show();
-                                    } else if (filteredProjects.length === 0) {
-                                        $noResults.show();
-                                        $searchResults.hide();
-                                    } else {
-                                        $searchResultsTbody.html(html);
-                                        $resultsCount.text(filteredProjects.length);
-                                        $searchResults.show();
-                                        $noResults.hide();
+                            if (bug.tagy) {
+                                try {
+                                    var tagy = JSON.parse(bug.tagy);
+                                    if (Array.isArray(tagy)) {
+                                        $.each(tagy, function(j, tag) {
+                                            rows += '<span style="background-color:#e7f3ff;color:#0073aa;padding:2px 6px;border-radius:3px;font-size:12px;margin-right:4px;">' + tag + '</span>';
+                                        });
                                     }
-                                    console.log('✓ Results displayed');
-                                } else {
-                                    console.log('No projects found');
-                                    $noResults.show();
-                                    $searchResults.hide();
-                                }
-                            } else {
-                                console.log('❌ Response error - no success or no projects');
-                                console.log('Response data:', response.data);
-                                $noResults.html('<p style="color: #d32f2f;">Chyba pri vyhľadávaní. Response: ' + JSON.stringify(response.data) + '</p>');
-                                $noResults.show();
-                                $searchResults.hide();
+                                } catch(e) {}
                             }
-                        },
-                        error: function(xhr, status, error) {
-                            console.error('❌ AJAX error:', error, 'Status:', status);
-                            console.error('Response text:', xhr.responseText);
-                            $noResults.html('<p style="color: #d32f2f;">AJAX chyba: ' + error + '</p>');
-                            $noResults.show();
-                            $searchResults.hide();
-                        }
-                    });
-                }
-            });
-            
-            // Event handler na synchronizáciu mien
-            $(document).on('click', '.sync-name-variant', function(e) {
-                e.preventDefault();
-                const projectId = $(this).data('project-id');
-                const correctName = $(this).data('correct-name');
-                
-                console.log('Synchronizácia mien - projekt: ' + projectId + ', meno: ' + correctName);
-                
-                if (!confirm('Synchronizovať všetkých pracovníkov s rovnakým menom bez diacritiky na: ' + correctName + '?')) {
-                    return;
-                }
-                
-                $.ajax({
-                    url: ajaxurl,
-                    type: 'POST',
-                    dataType: 'json',
-                    data: {
-                        action: 'helpdesk_sync_employee_names',
-                        _nonce: nonce,
-                        project_id: projectId,
-                        correct_name: correctName
-                    },
-                    success: function(response) {
-                        console.log('Synchronizácia odpoveď:', response);
-                        if (response.success) {
-                            alert('✅ Mená boli synchronizované: ' + response.data.updated_count + ' záznamov aktualizovaných.');
-                            // Refresh search results
-                            $searchInput.val($searchInput.val()).keyup();
-                        } else {
-                            alert('❌ Chyba: ' + (response.data.message || 'Neznáma chyba'));
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('Synchronizácia chyba:', error);
-                        alert('❌ AJAX chyba: ' + error);
-                    }
-                });
-            });
-            
-            // Event handler na pridanie pracovníka z pohotovosti na projekt
-            $(document).on('click', '.helpdesk-add-standby-btn', function(e) {
-                e.preventDefault();
-                const projectId = $(this).data('project-id');
-                const employeeId = $(this).data('employee-id');
-                const btn = $(this);
-                
-                console.log('Pridávanie pracovníka z pohotovosti: projekt=' + projectId + ', pracovník=' + employeeId);
-                
-                btn.prop('disabled', true);
-                btn.text('Pridávam...');
-                
-                $.ajax({
-                    url: ajaxurl,
-                    type: 'POST',
-                    dataType: 'json',
-                    data: {
-                        action: 'helpdesk_add_employee_to_project',
-                        _wpnonce: nonce,
-                        project_id: projectId,
-                        employee_id: employeeId,
-                        is_main: false,
-                        from_standby: true  // Dodatočný parameter - vzať z pohotovosti
-                    },
-                    success: function(response) {
-                        console.log('Pridávanie odpoveď:', response);
-                        if (response.success) {
-                            console.log('✅ Pracovník bol pridaný');
-                            alert('✅ Pracovník bol pridaný na projekt');
-                            // Refresh search results
-                            $searchInput.val($searchInput.val()).keyup();
-                        } else {
-                            console.error('❌ Chyba:', response.data.message);
-                            alert('❌ Chyba: ' + (response.data.message || 'Neznáma chyba'));
-                            btn.prop('disabled', false);
-                            btn.text('Pridať');
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('Pridávanie chyba:', error);
-                        alert('❌ AJAX chyba: ' + error);
-                        btn.prop('disabled', false);
-                        btn.text('Pridať');
-                    }
-                });
-            });
-            
-            // Event handler na otvorenie dialógu synchronizácie mien
-            $(document).on('click', '.open-sync-names-dialog', function(e) {
-                e.preventDefault();
-                const projectId = $(this).data('project-id');
-                const employeeType = $(this).data('employees'); // 'excel' alebo 'standby'
-                
-                console.log('Otvorenie dialógu - projekt: ' + projectId + ', typ: ' + employeeType);
-                
-                // Zober zamestnancov z aktuálneho projektu
-                const projectEl = $(this).closest('[style*="padding: 15px"]');
-                const allNames = [];
-                
-                projectEl.find('[style*="font-size: 12px"]').eq(employeeType === 'excel' ? 0 : 1).find('div').each(function() {
-                    const text = $(this).text();
-                    if (text && text.trim()) {
-                        allNames.push(text);
-                    }
-                });
-                
-                if (allNames.length === 0) {
-                    alert('Žiadni pracovníci na synchronizáciu');
-                    return;
-                }
-                
-                const uniqueNames = [...new Set(allNames)];
-                
-                let dialogHtml = '<div style="padding: 15px;">';
-                dialogHtml += '<p style="margin-bottom: 15px;">Vyber meno, na ktoré chceš synchronizovať všetkých zamestnancov s rovnakým menom bez diacritiky:</p>';
-                dialogHtml += '<div style="display: flex; flex-direction: column; gap: 10px;">';
-                
-                uniqueNames.forEach(name => {
-                    dialogHtml += '<button type="button" class="sync-specific-name" data-project-id="' + projectId + '" data-name="' + name + '" style="padding: 10px; background-color: #0073aa; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold;" onmouseover="this.style.backgroundColor=\'#005a87\';" onmouseout="this.style.backgroundColor=\'#0073aa\';">' + name + '</button>';
-                });
-                
-                dialogHtml += '</div></div>';
-                
-                // Vytvor jQuery dialog
-                var $dialog = $('<div id="sync-names-dialog"></div>').html(dialogHtml);
-                $dialog.dialog({
-                    title: 'Synchronizácia mien',
-                    modal: true,
-                    width: 400,
-                    buttons: {
-                        'Zrušiť': function() {
-                            $(this).dialog('close');
-                            $(this).remove();
-                        }
-                    }
-                });
-            });
-            
-            // Event handler na klik synchronizácie konkrétneho mena
-            $(document).on('click', '.sync-specific-name', function(e) {
-                e.preventDefault();
-                const projectId = $(this).data('project-id');
-                const correctName = $(this).data('name');
-                
-                console.log('Synchronizácia na meno: ' + correctName);
-                
-                if (!confirm('Synchronizovať všetkých pracovníkov s rovnakým menom bez diacritiky na: ' + correctName + '?')) {
-                    return;
-                }
-                
-                $('#sync-names-dialog').dialog('close').remove();
-                
-                $.ajax({
-                    url: ajaxurl,
-                    type: 'POST',
-                    dataType: 'json',
-                    data: {
-                        action: 'helpdesk_sync_employee_names',
-                        _nonce: nonce,
-                        project_id: projectId,
-                        correct_name: correctName
-                    },
-                    success: function(response) {
-                        console.log('Synchronizácia odpoveď:', response);
-                        if (response.success) {
-                            alert('✅ Mená boli synchronizované: ' + response.data.updated_count + ' záznamov aktualizovaných.');
-                            // Refresh search results
-                            $searchInput.val($searchInput.val()).keyup();
-                        } else {
-                            alert('❌ Chyba: ' + (response.data.message || 'Neznáma chyba'));
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('Synchronizácia chyba:', error);
-                        alert('❌ AJAX chyba: ' + error);
-                    }
-                });
-            });
-        } else {
-            console.log('ERROR: Could not find project search input!');
-        }
-        
-        console.log('=== Dashboard Bug Search Init Start ===');
-        console.log('AJAX Config - ajaxurl:', ajaxurl, 'nonce:', nonce);
-        
-        // Dashboard Bug Search
-        var $dashboardBugSearchInput = $('#dashboard-bug-search');
-        var $dashboardBugSearchResults = $('#dashboard-bug-search-results');
-        var $dashboardBugSearchResultsTbody = $('#dashboard-bug-search-results-tbody');
-        var $dashboardNoBugs = $('#dashboard-no-bugs');
-        var $dashboardBugCount = $('#dashboard-bug-results-count');
-        
-        console.log('✓ Bug search input found:', $dashboardBugSearchInput.length > 0);
-        console.log('✓ Bug search results found:', $dashboardBugSearchResults.length > 0);
-        
-        if ($dashboardBugSearchInput.length > 0) {
-            console.log('✓ Dashboard bug search initialized');
-            
-            $dashboardBugSearchInput.on('keyup', function(e) {
-                const val = $(this).val().trim();
-                console.log('⌨️ Bug keyup event - value:', val, 'length:', val.length);
-                
-                if (val.length < 1) {
-                    $dashboardBugSearchResults.hide();
-                    $dashboardNoBugs.show();
-                    return;
-                }
-                
-                if (val.length === 1) {
-                    $dashboardBugSearchResults.hide();
-                    $dashboardNoBugs.show();
-                    return;
-                }
-                
-                if (val.length >= 2) {
-                    console.log('🔍 Sending bug AJAX search for:', val);
-                    
-                    $.ajax({
-                        url: ajaxurl,
-                        type: 'POST',
-                        data: {
-                            action: 'helpdesk_search_bugs',
-                            _wpnonce: nonce,
-                            search: val
-                        },
-                        dataType: 'json',
-                        success: function(response) {
-                            console.log('✓ Bug AJAX success:', response);
                             
-                            if (response.success && response.data && response.data.bugs) {
-                                console.log('Dashboard bugs array:', response.data.bugs);
-                                
-                                if (response.data.bugs.length > 0) {
-                                    console.log('Rendering dashboard bugs...');
-                                    let html = '';
-                                    response.data.bugs.forEach(function(bug, idx) {
-                                        html += '<tr data-bug-id="' + bug.id + '">';
-                                        html += '<td>' + (bug.nazov || '') + '</td>';
-                                        html += '<td>' + (bug.product_name || '') + '</td>';
-                                        
-                                        // Render tags
-                                        html += '<td>';
-                                        if (bug.tagy) {
-                                            try {
-                                                const tagy = JSON.parse(bug.tagy);
-                                                if (Array.isArray(tagy) && tagy.length > 0) {
-                                                    html += '<div style="display: flex; flex-wrap: wrap; gap: 4px;">';
-                                                    tagy.forEach(tag => {
-                                                        html += '<span style="background-color: #e7f3ff; color: #0073aa; padding: 2px 6px; border-radius: 3px; font-size: 12px; white-space: nowrap;">' + tag + '</span>';
-                                                    });
-                                                    html += '</div>';
-                                                }
-                                            } catch(e) {
-                                                // Ignore parsing errors
-                                            }
-                                        }
-                                        html += '</td>';
-                                        
-                                        html += '<td>';
-                                        html += '<button class="button button-small dashboard-bug-detail" data-bug-id="' + bug.id + '" style="margin-right: 5px;">📋 Detail</button>';
-                                        html += '</td>';
-                                        html += '</tr>';
-                                    });
-                                    console.log('✓ Bug HTML ready, rendering ' + response.data.bugs.length + ' results');
-                                    $dashboardBugSearchResultsTbody.html(html);
-                                    $dashboardBugCount.text(response.data.bugs.length);
-                                    $dashboardBugSearchResults.show();
-                                    $dashboardNoBugs.hide();
-                                } else {
-                                    console.log('No bugs found');
-                                    $dashboardBugSearchResults.hide();
-                                    $dashboardNoBugs.show();
-                                }
-                            } else {
-                                console.log('❌ Bug response error:', response);
-                                $dashboardNoBugs.html('<p style="color: #d32f2f;">Chyba: ' + (response.data ? JSON.stringify(response.data) : 'Unknown error') + '</p>');
-                                $dashboardBugSearchResults.hide();
-                                $dashboardNoBugs.show();
-                            }
-                        },
-                        error: function(xhr, status, error) {
-                            console.error('❌ Bug AJAX error:', error, 'Status:', status);
-                            console.error('Response:', xhr.responseText);
-                            $dashboardNoBugs.html('<p style="color: #d32f2f;">AJAX chyba: ' + error + '</p>');
-                            $dashboardBugSearchResults.hide();
-                            $dashboardNoBugs.show();
-                        }
-                    });
-                }
+                            rows += '</td><td><button class="button button-small" data-bug-id="' + bug.id + '">Detail</button></td></tr>';
+                        });
+                        
+                        $('#dashboard-bug-search-results-tbody').html(rows);
+                        $('#dashboard-bug-results-count').text(resp.data.bugs.length);
+                        $('#dashboard-bug-search-results').show();
+                        $('#dashboard-no-bugs').hide();
+                    } else {
+                        $('#dashboard-bug-search-results').hide();
+                        $('#dashboard-no-bugs').html('<p>No results</p>').show();
+                    }
+                }, 'json');
             });
-        } else {
-            console.error('❌ ERROR: Could not find dashboard bug search input!');
-        }
+        }, 100);
         
-        console.log('=== Dashboard Bug Search Init End ===');
         
         // ===== BUG SEARCH INITIALIZATION =====
-        console.log('=== Bug Search Init Start ===');
         var $bugSearchInput = $('#helpdesk-bugs-search');
         var $bugSearchResults = $('#helpdesk-bug-search-results');
         var $bugSearchResultsTbody = $('#helpdesk-bug-search-results-tbody');
         
-        console.log('Bug search input:', $bugSearchInput.length);
-        console.log('Bug search results div:', $bugSearchResults.length);
-        console.log('Bug search results tbody:', $bugSearchResultsTbody.length);
         
         if ($bugSearchInput.length > 0 && $bugSearchResults.length > 0) {
-            console.log('Bug search initialized');
             
             $bugSearchInput.on('keyup', function(e) {
                 const val = $(this).val();
                 
                 if (val.length < 2) {
-                    console.log('Bug search input too short, hiding results');
                     $bugSearchResults.hide();
                     return;
                 }
                 
                 if (val.length >= 2) {
-                    console.log('Bug search value is long enough, sending AJAX');
                     
                     $.ajax({
                         url: ajaxurl,
                         type: 'POST',
                         data: {
                             action: 'helpdesk_search_bugs',
-                            _nonce: nonce,
+                            _ajax_nonce: nonce,
                             search: val
                         },
                         dataType: 'json',
                         success: function(response) {
-                            console.log('Bug search AJAX success:', response);
-                            console.log('Bug search response data:', response.data);
                             
                             if (response.success && response.data && response.data.bugs) {
-                                console.log('Bugs array:', response.data.bugs);
-                                console.log('Bugs count:', response.data.bugs.length);
                                 
                                 if (response.data.bugs.length > 0) {
-                                    console.log('Rendering bugs...');
                                     let html = '';
                                     response.data.bugs.forEach(function(bug, idx) {
-                                        console.log('Rendering bug ' + idx + ':', bug);
                                         html += '<tr data-bug-id="' + bug.id + '">';
                                         html += '<td>' + (bug.nazov || '') + '</td>';
                                         html += '<td>' + (bug.product_name || '') + '</td>';
@@ -786,23 +301,18 @@ console.log('admin.js file loaded - v1.0.1');
                                         html += '</td>';
                                         html += '</tr>';
                                     });
-                                    console.log('Bug HTML ready:', html);
                                     $bugSearchResultsTbody.html(html);
                                     $bugSearchResults.show();
-                                    console.log('Bug results displayed');
                                 } else {
-                                    console.log('No bugs found - showing empty message');
                                     $bugSearchResultsTbody.html('<tr><td colspan="4">Žiadne chyby neboli nájdené.</td></tr>');
                                     $bugSearchResults.show();
                                 }
                             } else {
-                                console.log('Bug response error - no success or no bugs');
                                 $bugSearchResultsTbody.html('<tr><td colspan="4">Chyba pri vyhľadávaní.</td></tr>');
                                 $bugSearchResults.show();
                             }
                         },
                         error: function(xhr, status, error) {
-                            console.error('Bug search AJAX error:', error);
                             $bugSearchResultsTbody.html('<tr><td colspan="5">AJAX chyba: ' + error + '</td></tr>');
                             $bugSearchResults.show();
                         }
@@ -810,14 +320,11 @@ console.log('admin.js file loaded - v1.0.1');
                 }
             });
         } else {
-            console.log('ERROR: Could not find bug search elements! Bug search disabled.');
         }
         
-        console.log('=== Bug Search Init End ===');
         
         // Function to load and display bug details
         function loadBugDetails(bugId) {
-            console.log('Loading bug details for ID:', bugId);
             
             // Load full bug details
             $.ajax({
@@ -830,12 +337,9 @@ console.log('admin.js file loaded - v1.0.1');
                 },
                 dataType: 'json',
                 success: function(detailResponse) {
-                    console.log('Bug detail response:', detailResponse);
                     
                     if (detailResponse.success) {
                         const bugData = detailResponse.data.bug;
-                        console.log('Bug details loaded:', bugData);
-                        console.log('Signature data:', bugData.signature);
                         
                         // Create modal for bug details with 2-column layout
                         let html = '<div style="padding: 20px; background: white; border-radius: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">';
@@ -852,15 +356,10 @@ console.log('admin.js file loaded - v1.0.1');
                         
                         // Build solution text with signature if exists
                         let solutionDisplay = bugData.riesenie || '-';
-                        console.log('Checking signature - signature object:', bugData.signature);
-                        console.log('Signature type:', typeof bugData.signature);
-                        console.log('Signature has text_podpisu:', bugData.signature && bugData.signature.text_podpisu);
                         
                         if (bugData.signature && bugData.signature.text_podpisu && bugData.signature.text_podpisu.trim()) {
                             solutionDisplay = solutionDisplay + '\n\n---\n' + bugData.signature.text_podpisu;
-                            console.log('Added signature to display');
                         } else {
-                            console.log('No signature text found');
                         }
                         
                         // Determine grid columns based on solution 2
@@ -887,9 +386,7 @@ console.log('admin.js file loaded - v1.0.1');
                             let solution2Display = bugData.riesenie_2;
                             if (bugData.signature && bugData.signature.text_podpisu && bugData.signature.text_podpisu.trim()) {
                                 solution2Display = solution2Display + '\n\n---\n' + bugData.signature.text_podpisu;
-                                console.log('Added signature to solution 2 display');
                             } else {
-                                console.log('No signature text found for solution 2');
                             }
                             
                             html += '<div>';
@@ -934,14 +431,11 @@ console.log('admin.js file loaded - v1.0.1');
                             document.body.appendChild(backdrop);
                         }
                         
-                        console.log('Bug detail modal displayed');
                     } else {
-                        console.error('Response not successful:', detailResponse);
                         alert('Chyba pri načítaní detailov: ' + (detailResponse.data.message || ''));
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('AJAX error:', error, 'Status:', status, 'Response:', xhr.responseText);
                     alert('AJAX chyba pri načítaní detailov: ' + error);
                 }
             });
@@ -1005,7 +499,6 @@ console.log('admin.js file loaded - v1.0.1');
         $(document).on('click', '.dashboard-bug-detail', function(e) {
             e.stopPropagation();
             const bugId = $(this).data('bug-id');
-            console.log('Detail button clicked for bug:', bugId);
             loadBugDetails(bugId);
         });
 
@@ -1015,30 +508,13 @@ console.log('admin.js file loaded - v1.0.1');
         $(document).on('click', '.dashboard-project-employees', function(e) {
             e.stopPropagation();
             const projectId = $(this).data('project-id');
-            console.log('Employees button clicked for project:', projectId);
             loadProjectEmployeesDetail(projectId);
         });
 
-        // Click handler for select button in multi-project results
-        $(document).on('click', '#dashboard-search-results .dashboard-project-select', function(e) {
-            e.stopPropagation();
-            console.log('=== Project select button clicked ===');
-            
-            const projectId = $(this).data('project-id');
-            console.log('Project ID from button:', projectId);
-            
-            if (!projectId) {
-                console.error('No project ID found!');
-                alert('Chyba: Nepodarilo sa identifikovať projekt');
-                return;
-            }
-            
-            loadProjectDetails(projectId);
-        });
-
+        // ✅ Project selection handler deprecated - dashboard.php uses fetch API instead
+        
         // Function to load and display project details
         function loadProjectDetails(projectId) {
-            console.log('Loading project details for ID:', projectId);
             
             // Load full project details
             $.ajax({
@@ -1051,14 +527,11 @@ console.log('admin.js file loaded - v1.0.1');
                 },
                 dataType: 'json',
                 success: function(detailResponse) {
-                    console.log('Project detail response:', detailResponse);
                     
                     if (detailResponse.success) {
                         const projectData = detailResponse.data.project;
                         const projectEmployees = detailResponse.data.employees || [];
 
-                        console.log('Project details loaded:', projectData);
-                        console.log('Project employees:', projectEmployees);
 
                         // Find and display main employee details in card
                         // Prioritize: 1) standby (should_be_main) UNLESS nemenit is checked, 2) is_hlavny from DB
@@ -1090,14 +563,11 @@ console.log('admin.js file loaded - v1.0.1');
                             $('#main-employee-card').hide();
                         }
                         
-                        console.log('Main employee card displayed:', mainEmployee);
                     } else {
-                        console.error('Response not successful:', detailResponse);
                         alert('Chyba pri načítaní detailov: ' + (detailResponse.data.message || ''));
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('AJAX error:', error, 'Status:', status, 'Response:', xhr.responseText);
                     alert('AJAX chyba pri načítaní detailov: ' + error);
                 }
             });
@@ -1105,7 +575,6 @@ console.log('admin.js file loaded - v1.0.1');
 
         // Funkcia na zobrazenie detailov pracovníkov projektu (v modále)
         function loadProjectEmployeesDetail(projectId) {
-            console.log('Loading employees detail for project:', projectId);
             
             $.ajax({
                 type: 'POST',
@@ -1137,8 +606,6 @@ console.log('admin.js file loaded - v1.0.1');
                             return emp.pohotovost_od <= todayDate && todayDate <= emp.pohotovost_do;
                         });
                         
-                        console.log('Excel employees:', excelEmployees);
-                        console.log('Standby employees:', standbyEmployees);
                         
                         // Vytvor modal/box s detailom
                         let html = '<div style="padding: 20px; background: white; border-radius: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">';
@@ -1237,13 +704,11 @@ console.log('admin.js file loaded - v1.0.1');
                             document.body.appendChild(backdrop);
                         }
                         
-                        console.log('Employees modal displayed');
                     } else {
                         alert('Chyba pri načítaní pracovníkov');
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('AJAX error:', error);
                     alert('Chyba pri načítaní: ' + error);
                 }
             });
@@ -1252,7 +717,6 @@ console.log('admin.js file loaded - v1.0.1');
         // Click handler for search results - load project details (for single project or row click)
         // Už nič - pracovníci sa zobrazujú priamo v search results bez modalu
 
-        console.log('Search result click handler attached');
 
         // Modal close on ESC key
         $(document).on('keydown', function(e) {
@@ -1294,7 +758,6 @@ console.log('admin.js file loaded - v1.0.1');
 
             // Open new employee modal
             $(document).on('click', '.helpdesk-btn-new-employee', function() {
-                console.log('New employee button clicked');
                 $('#employee-id').val('');
                 $('#helpdesk-employee-form')[0].reset();
                 $('#employee-modal-title').text('Pridať pracovníka');
@@ -1307,7 +770,6 @@ console.log('admin.js file loaded - v1.0.1');
             // Load projects for employee form
             function loadProjectsForEmployee() {
                 const employeeId = $('#employee-id').val();
-                console.log('loadProjectsForEmployee called, employeeId:', employeeId);
                 
                 $.ajax({
                     type: 'POST',
@@ -1318,24 +780,20 @@ console.log('admin.js file loaded - v1.0.1');
                     },
                     dataType: 'json',
                     success: function(response) {
-                        console.log('Projects loaded:', response);
                         if (response.success) {
                             const projects = response.data.projects || [];
-                            console.log('Projects count:', projects.length);
                             let html = '';
                             projects.forEach(proj => {
                                 html += '<div style="margin-bottom: 8px;">';
                                 html += '<label style="display: flex; align-items: center; gap: 8px; margin: 0; cursor: pointer;">';
                                 html += '<input type="checkbox" name="employee-projects" value="' + proj.id + '" class="employee-project-checkbox">';
-                                html += '<span>' + proj.zakaznicke_cislo + '</span>';
+                                html += '<span>' + proj.zakaznicke_cislo + ' - ' + proj.nazov + '</span>';
                                 html += '</label></div>';
                             });
                             $('#employee-projects-list').html(html);
-                            console.log('HTML inserted into #employee-projects-list');
 
                             // Ak sa upravuje existujúci pracovník, načítaj jeho projekty
                             if (employeeId) {
-                                console.log('Loading existing employee projects');
                                 $.ajax({
                                     type: 'POST',
                                     url: ajaxurl,
@@ -1346,10 +804,8 @@ console.log('admin.js file loaded - v1.0.1');
                                     },
                                     dataType: 'json',
                                     success: function(empResponse) {
-                                        console.log('Employee response:', empResponse);
                                         if (empResponse.success && empResponse.data.employee_projects) {
                                             const employeeProjects = empResponse.data.employee_projects;
-                                            console.log('Employee projects:', employeeProjects);
                                             // Store globally for standby selection
                                             employeeSelectedProjects = employeeProjects;
                                             employeeProjects.forEach(projId => {
@@ -1358,25 +814,20 @@ console.log('admin.js file loaded - v1.0.1');
                                         }
                                     },
                                     error: function(xhr, status, error) {
-                                        console.error('Error loading employee:', error);
                                     }
                                 });
                             } else {
                                 // New employee - reset selected projects
-                                console.log('New employee, resetting projects');
                                 employeeSelectedProjects = [];
                             }
                         } else {
-                            console.error('Response not successful:', response);
                         }
                     },
                     error: function(xhr, status, error) {
-                        console.error('Error loading projects:', error);
                         $('#employee-projects-list').html('<p style="color: red;">Chyba pri načítavaní projektov</p>');
                     },
                     complete: function() {
                         // After projects are loaded, also load standby projects
-                        console.log('Projects loading complete, calling loadStandbyProjectsFromData');
                         loadStandbyProjectsFromData();
                     }
                 });
@@ -1401,7 +852,6 @@ console.log('admin.js file loaded - v1.0.1');
             // Edit employee
             $(document).on('click', '#helpdesk-employees-table .helpdesk-btn-edit', function() {
                 const id = $(this).data('id');
-                console.log('Edit employee:', id);
                 $.ajax({
                     type: 'POST',
                     url: ajaxurl,
@@ -1456,7 +906,6 @@ console.log('admin.js file loaded - v1.0.1');
                         }
                     },
                     error: function(xhr, status, error) {
-                        console.error('AJAX error:', error);
                         alert('AJAX chyba pri načítaní: ' + error);
                     }
                 });
@@ -1469,14 +918,12 @@ console.log('admin.js file loaded - v1.0.1');
 
             // Close detail modal
             $(document).on('click', '#helpdesk-employee-detail-modal .helpdesk-modal-close, #helpdesk-employee-detail-modal .helpdesk-modal-close-btn', function() {
-                console.log('Closing detail modal');
                 $('#helpdesk-employee-detail-modal').removeClass('active');
             });
 
             // Submit form
             $(document).on('submit', '#helpdesk-employee-form', function(e) {
                 e.preventDefault();
-                console.log('Employee form submitted');
                 const id = $('#employee-id').val();
 
                 // Zbieranie vybraných projektov
@@ -1493,7 +940,6 @@ console.log('admin.js file loaded - v1.0.1');
                     poznamka: $('#employee-poznamka').val(),
                     projects: selectedProjects
                 };
-                console.log('Form data:', formData);
 
                 $.ajax({
                     type: 'POST',
@@ -1506,8 +952,6 @@ console.log('admin.js file loaded - v1.0.1');
                     },
                     dataType: 'json',
                     success: function(response) {
-                        console.log('Response:', response);
-                        console.log('Response.data:', response.data);
                         $('.error-message').text('');
                         if (response.success) {
                             // Check if standby mode is selected and set to auto
@@ -1515,18 +959,15 @@ console.log('admin.js file loaded - v1.0.1');
                             const isStandbyEnabled = $('input[name="standby-mode"]').length > 0;
                             
                             if (isStandbyEnabled && standbyMode === 'auto' && id) {
-                                console.log('Auto mode selected, triggering auto-generation');
                                 triggerAutoGenerateStandby(id);
                             } else {
                                 alert(response.data.message);
                                 location.reload();
                             }
                         } else {
-                            console.log('Errors object:', response.data.errors);
                             console.log('Full response data:', JSON.stringify(response.data));
                             if (response.data && response.data.errors) {
                                 $.each(response.data.errors, function(key, msg) {
-                                    console.log('Setting error for ' + key + ':', msg);
                                     $('#error-' + key).text(msg);
                                 });
                             } else if (response.data && response.data.message) {
@@ -1537,7 +978,6 @@ console.log('admin.js file loaded - v1.0.1');
                         }
                     },
                     error: function(xhr, status, error) {
-                        console.error('AJAX error:', error, 'Status:', status, 'Response:', xhr.responseText);
                         alert('AJAX chyba pri uložení: ' + error + '\n' + xhr.responseText);
                     }
                 });
@@ -1546,7 +986,6 @@ console.log('admin.js file loaded - v1.0.1');
             // Auto-generate standby periods
             function triggerAutoGenerateStandby(employeeId) {
                 console.log('=== Auto-generating standby periods (BATCH MODE) ===');
-                console.log('Employee ID:', employeeId);
                 
                 const startDate = $('#standby-start-date').val();
                 const intervalType = $('#standby-interval-type').val();
@@ -1602,7 +1041,6 @@ console.log('admin.js file loaded - v1.0.1');
                         numPeriods
                     );
                     
-                    console.log('Generated periods for project ' + projectId + ':', rotationPeriods);
                     
                     rotationPeriods.forEach((entry, idx) => {
                         allPeriods.push({
@@ -1614,8 +1052,6 @@ console.log('admin.js file loaded - v1.0.1');
                     });
                 });
                 
-                console.log('Total periods to save:', allPeriods.length);
-                console.log('All periods:', allPeriods);
                 
                 if (allPeriods.length === 0) {
                     alert('Pohotovosť: Žiadne periody na generovanie');
@@ -1624,7 +1060,6 @@ console.log('admin.js file loaded - v1.0.1');
                 }
                 
                 // Send all periods in a single AJAX request
-                console.log('Sending batch request with ' + allPeriods.length + ' periods');
                 
                 // Show loading indicator
                 const $modal = $('#helpdesk-employee-modal');
@@ -1641,7 +1076,6 @@ console.log('admin.js file loaded - v1.0.1');
                     },
                     dataType: 'json',
                     success: function(response) {
-                        console.log('Batch AJAX success response:', response);
                         if (response.success) {
                             const savedCount = response.data.saved_count || allPeriods.length;
                             alert('✓ Vytvoreného ' + savedCount + ' periód pohotovosti. Pracovník bol uložený.');
@@ -1658,7 +1092,6 @@ console.log('admin.js file loaded - v1.0.1');
                         }
                     },
                     error: function(xhr, status, error) {
-                        console.error('✗ Batch generation AJAX error:', error, 'Status:', status, 'Response:', xhr.responseText);
                         alert('✗ AJAX chyba pri generovaní pohotovosti: ' + error);
                         // Restore modal content and close
                         $modal.html(originalContent);
@@ -1736,7 +1169,7 @@ console.log('admin.js file loaded - v1.0.1');
                                 html += '<div style="margin-bottom: 10px;">';
                                 html += '<label style="display: flex; align-items: center; gap: 8px; margin: 0; cursor: pointer;">';
                                 html += '<input type="checkbox" name="bulk-projects" value="' + proj.id + '" class="bulk-project-checkbox">';
-                                html += '<span>' + proj.zakaznicke_cislo + '</span>';
+                                html += '<span>' + proj.zakaznicke_cislo + ' - ' + proj.nazov + '</span>';
                                 html += '</label></div>';
                             });
                             $('#bulk-projects-list').html(html);
@@ -1796,17 +1229,13 @@ console.log('admin.js file loaded - v1.0.1');
 
             // Standby mode toggle (manual vs auto)
             $(document).on('change', '.standby-mode-radio', function() {
-                console.log('=== STANDBY MODE CHANGED ===');
                 const mode = $(this).val();
-                console.log('Selected mode:', mode);
                 
                 if (mode === 'manual') {
-                    console.log('Showing manual pohotovost section');
                     $('#employee-pohotovost-section').show();
                     $('#employee-auto-pohotovost-section').hide();
                     loadStandbyProjectsFromData();
                 } else if (mode === 'auto') {
-                    console.log('Showing auto pohotovost section');
                     $('#employee-pohotovost-section').hide();
                     $('#employee-auto-pohotovost-section').show();
                     loadStandbyProjectsFromData();
@@ -1815,16 +1244,13 @@ console.log('admin.js file loaded - v1.0.1');
 
             // Pohotovosť checkbox toggle
             $(document).on('change', '#employee-pohotovost-checkbox', function() {
-                console.log('=== POHOTOVOST CHECKBOX CHANGED ===');
                 console.log('Is checked:', $(this).is(':checked'));
                 
                 if ($(this).is(':checked')) {
-                    console.log('Showing pohotovost sections and loading projects');
                     $('#employee-pohotovost-section').show();
                     $('#employee-auto-pohotovost-section').show();
                     loadStandbyProjectsFromData();
                 } else {
-                    console.log('Hiding pohotovost sections');
                     $('#employee-pohotovost-section').hide();
                     $('#employee-auto-pohotovost-section').hide();
                 }
@@ -1832,19 +1258,15 @@ console.log('admin.js file loaded - v1.0.1');
 
             // Load projects for standby select - directly from employee data
             function loadStandbyProjectsFromData() {
-                console.log('=== loadStandbyProjectsFromData STARTED ===');
                 
                 const employeeId = $('#employee-id').val();
-                console.log('Employee ID:', employeeId);
                 
                 if (!employeeId) {
-                    console.error('NO EMPLOYEE ID!');
                     $('#standby-project-select').html('<option disabled>Pracovník nie je uložený</option>');
                     $('#standby-projects-list').html('<p style="color: red;">Pracovník nie je uložený</p>');
                     return;
                 }
                 
-                console.log('Loading employee data for ID:', employeeId);
 
                 // Load employee to get their projects
                 $.ajax({
@@ -1857,11 +1279,9 @@ console.log('admin.js file loaded - v1.0.1');
                     },
                     dataType: 'json',
                     success: function(empResponse) {
-                        console.log('Employee response received:', empResponse);
                         
                         if (empResponse.success && empResponse.data.employee_projects) {
                             const employeeProjectIds = empResponse.data.employee_projects;
-                            console.log('Employee has', employeeProjectIds.length, 'projects:', employeeProjectIds);
                             
                             // Now fetch all projects to get their names
                             $.ajax({
@@ -1873,11 +1293,9 @@ console.log('admin.js file loaded - v1.0.1');
                                 },
                                 dataType: 'json',
                                 success: function(response) {
-                                    console.log('All projects response received:', response);
                                     
                                     if (response.success && response.data.projects) {
                                         const allProjects = response.data.projects;
-                                        console.log('Total projects in system:', allProjects.length);
                                         
                                         let html = '<option value="">-- Vyberte projekt --</option>';
                                         let genHtml = '';
@@ -1888,54 +1306,44 @@ console.log('admin.js file loaded - v1.0.1');
                                             const isEmployeeProject = employeeProjectIds.includes(parseInt(proj.id)) || employeeProjectIds.includes(proj.id);
                                             
                                             if (isEmployeeProject) {
-                                                console.log('Adding project:', proj.id, proj.zakaznicke_cislo);
-                                                html += '<option value="' + proj.id + '">' + proj.zakaznicke_cislo + '</option>';
+                                                html += '<option value="' + proj.id + '">' + proj.zakaznicke_cislo + ' - ' + proj.nazov + '</option>';
                                                 genHtml += '<div style="margin-bottom: 8px;">';
                                                 genHtml += '<label style="display: flex; align-items: center; gap: 8px; margin: 0; cursor: pointer;">';
                                                 genHtml += '<input type="checkbox" name="standby-projects" value="' + proj.id + '" class="standby-project-checkbox">';
-                                                genHtml += '<span>' + proj.zakaznicke_cislo + '</span>';
+                                                genHtml += '<span>' + proj.zakaznicke_cislo + ' - ' + proj.nazov + '</span>';
                                                 genHtml += '</label></div>';
                                                 addedCount++;
                                             }
                                         });
                                         
-                                        console.log('Total matching projects:', addedCount);
                                         
                                         if (addedCount === 0) {
-                                            console.warn('No matching projects found!');
                                             html += '<option disabled>Pracovník nemá priradené projekty</option>';
                                             genHtml = '<p style="color: red;">Pracovník nemá priradené projekty</p>';
                                         } else if (addedCount === 1) {
-                                            console.log('Auto-checking single project checkbox');
                                             genHtml = genHtml.replace('type="checkbox"', 'type="checkbox" checked="checked"');
                                         }
                                         
-                                        console.log('Setting HTML to #standby-project-select');
                                         $('#standby-project-select').html(html);
-                                        console.log('Setting HTML to #standby-projects-list');
                                         $('#standby-projects-list').html(genHtml);
                                         
                                         console.log('Final HTML for select:', html.substring(0, 100));
                                     } else {
-                                        console.error('Failed to load projects response:', response);
                                         $('#standby-project-select').html('<option disabled>Chyba pri načítaní projektov</option>');
                                         $('#standby-projects-list').html('<p style="color: red;">Chyba pri načítaní projektov</p>');
                                     }
                                 },
                                 error: function(xhr, status, error) {
-                                    console.error('Error loading projects AJAX:', error, status, xhr.responseText);
                                     $('#standby-project-select').html('<option disabled>AJAX Chyba</option>');
                                     $('#standby-projects-list').html('<p style="color: red;">AJAX Chyba</p>');
                                 }
                             });
                         } else {
-                            console.error('Failed to load employee data:', empResponse);
                             $('#standby-project-select').html('<option disabled>Pracovník nemá projekty</option>');
                             $('#standby-projects-list').html('<p style="color: red;">Pracovník nemá projekty</p>');
                         }
                     },
                     error: function(xhr, status, error) {
-                        console.error('Error loading employee AJAX:', error, status, xhr.responseText);
                         $('#standby-project-select').html('<option disabled>AJAX Chyba</option>');
                         $('#standby-projects-list').html('<p style="color: red;">AJAX Chyba</p>');
                     }
@@ -1954,7 +1362,6 @@ console.log('admin.js file loaded - v1.0.1');
                     return;
                 }
 
-                console.log('Loading employees for projects:', projectIds);
 
                 // Load employees for first selected project (to show who's involved)
                 $.ajax({
@@ -1977,17 +1384,14 @@ console.log('admin.js file loaded - v1.0.1');
                             // Auto-select single employee
                             if (employees.length === 1) {
                                 html = '<option value="' + employees[0].id + '" selected="selected">' + employees[0].meno_priezvisko + ' (' + employees[0].klapka + ')</option>';
-                                console.log('Auto-selected single employee:', employees[0].meno_priezvisko);
                             }
                             
                             $('#standby-rotation-employees').html(html);
-                            console.log('Loaded', employees.length, 'employees for project');
                         } else {
                             $('#standby-rotation-employees').html('<option disabled>Nepodarilo sa načítať pracovníkov</option>');
                         }
                     },
                     error: function(xhr, status, error) {
-                        console.error('Error loading project employees:', error);
                         $('#standby-rotation-employees').html('<option disabled>Chyba pri načítaní</option>');
                     }
                 });
@@ -2033,20 +1437,17 @@ console.log('admin.js file loaded - v1.0.1');
             // Display standby periods
             function displayStandbyPeriods(periods) {
                 let html = '';
-                console.log('displayStandbyPeriods called with periods:', periods);
                 if (periods && periods.length > 0) {
                     html = '<table style="width: 100%; border-collapse: collapse;">';
                     
                     periods.forEach(function(period, idx) {
                         const projectName = period.zakaznicke_cislo ? period.zakaznicke_cislo : 'Neznámy projekt';
-                        console.log('Processing period:', period, 'od:', period.pohotovost_od, 'do:', period.pohotovost_do);
                         
                         // Parse dates - handle string format YYYY-MM-DD
                         let odDate, doDate;
                         if (typeof period.pohotovost_od === 'string') {
                             const [year, month, day] = period.pohotovost_od.split('-');
                             odDate = new Date(year, month - 1, day);
-                            console.log('Parsed od date:', odDate);
                         } else {
                             odDate = new Date(period.pohotovost_od);
                         }
@@ -2077,7 +1478,6 @@ console.log('admin.js file loaded - v1.0.1');
                         // Format dates for display
                         const odFormatted = formatDateForDisplay(odDate);
                         const doFormatted = formatDateForDisplay(doDate);
-                        console.log('Formatted dates - od:', odFormatted, 'do:', doFormatted);
                         
                         html += '<tr style="border-bottom: 1px solid #ddd;">';
                         html += '<td style="padding: 8px;"><strong>' + projectName + '</strong></td>';
@@ -2174,7 +1574,6 @@ console.log('admin.js file loaded - v1.0.1');
                         numPeriods
                     );
 
-                    console.log('Generated rotation periods for project ' + projectId + ':', rotationPeriods);
 
                     // Add all generated periods for all employees
                     rotationPeriods.forEach(entry => {
@@ -2186,7 +1585,6 @@ console.log('admin.js file loaded - v1.0.1');
                             date_from: entry.od,
                             date_to: entry.do
                         };
-                        console.log('Sending AJAX data:', ajaxData);
                         $.ajax({
                             type: 'POST',
                             url: ajaxurl,
@@ -2196,13 +1594,10 @@ console.log('admin.js file loaded - v1.0.1');
                             success: function(response) {
                                 if (response.success) {
                                     addedCount++;
-                                    console.log('✓ Added standby for employee', entry.employee_id, 'project', projectId, ':', entry.od, '-', entry.do);
                                 } else {
-                                    console.error('✗ Failed to add period:', entry, response);
                                 }
                             },
                             error: function(xhr, status, error) {
-                                console.error('✗ AJAX error adding period:', error, 'Response:', xhr.responseText);
                             }
                         });
                     });
@@ -2341,7 +1736,6 @@ console.log('admin.js file loaded - v1.0.1');
             // Open standby modal
             $(document).on('click', '.helpdesk-btn-standby', function() {
                 const employeeId = $(this).data('id');
-                console.log('Standby button clicked for employee:', employeeId);
                 
                 // Load employee name
                 $.ajax({
@@ -2378,12 +1772,10 @@ console.log('admin.js file loaded - v1.0.1');
                 } else {
                     labelEl.text('Počet periód');
                 }
-                console.log('Label updated for interval type:', intervalType);
             }
 
             // Close standby modal
             $(document).on('click', '#helpdesk-standby-modal .helpdesk-modal-close, #helpdesk-standby-modal .helpdesk-modal-close-btn', function() {
-                console.log('Closing standby modal');
                 $('#helpdesk-standby-modal').hide();
             });
 
@@ -2395,7 +1787,6 @@ console.log('admin.js file loaded - v1.0.1');
             // Open vacation modal
             $(document).on('click', '.helpdesk-btn-vacation', function() {
                 const employeeId = $(this).data('id');
-                console.log('Vacation button clicked for employee:', employeeId);
                 
                 // Load employee vacation data
                 $.ajax({
@@ -2527,7 +1918,6 @@ console.log('admin.js file loaded - v1.0.1');
                     },
                     dataType: 'json',
                     success: function(response) {
-                        console.log('Projects with employees response:', response);
                         if (response.success && response.data.projects) {
                             response.data.projects.forEach(project => {
                                 // Hľadaj span s class "project-employees-display" a data-project-id
@@ -2536,9 +1926,7 @@ console.log('admin.js file loaded - v1.0.1');
                                 
                                 if (project.employees && project.employees.length > 0) {
                                     const today = new Date().toISOString().split('T')[0];
-                                    console.log('Processing project ' + project.id + ', employees:', project.employees);
                                     empText = project.employees.map(e => {
-                                        console.log('Employee ' + e.meno_priezvisko + ' - nepritomnost_od:', e.nepritomnost_od, 'nepritomnost_do:', e.nepritomnost_do, 'has_standby:', e.has_standby);
                                         let name = '';
                                         if (e.is_hlavny == 1 || e.is_hlavny === '1' || e.is_hlavny === true) {
                                             name += '🟢 ';
@@ -2555,7 +1943,6 @@ console.log('admin.js file loaded - v1.0.1');
                                         const isAbsent = e.nepritomnost_od && e.nepritomnost_do && 
                                             today >= e.nepritomnost_od && today <= e.nepritomnost_do;
                                         
-                                        console.log('Employee ' + e.meno_priezvisko + ' - today: ' + today + ', hasStandbyToday:', hasStandbyToday + ', isAbsent:', isAbsent);
                                         
                                         // Apply standby indicator if has standby today
                                         if (hasStandbyToday) {
@@ -2581,7 +1968,6 @@ console.log('admin.js file loaded - v1.0.1');
                         }
                     },
                     error: function(xhr, status, error) {
-                        console.log('Error loading projects with employees:', error);
                         // Fallback: Just display "žiadni" for all (data je v PHP render)
                         $('.project-employees-display').text('žiadni');
                     }
@@ -2655,8 +2041,13 @@ console.log('admin.js file loaded - v1.0.1');
                                 
                                 const $row = $('<tr>').attr('data-project-id', project.id);
                                 
-                                // Use jQuery text() for safe HTML encoding
-                                const $zakaznickeCell = $('<td>').addClass('column-zakaznicke-cislo').text(project.zakaznicke_cislo);
+                                // Create zakaznicke_cislo cell with number and name
+                                const $zakaznickeCell = $('<td>').addClass('column-zakaznicke-cislo');
+                                let cisloHtml = '<strong>' + (project.zakaznicke_cislo || 'N/A').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</strong>';
+                                if (project.nazov) {
+                                    cisloHtml += ' ' + (project.nazov).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                                }
+                                $zakaznickeCell.html(cisloHtml);
                                 const $komunikacieCell = $('<td>').addClass('column-spobsob-komunikacie').text(project.hd_kontakt || '');
                                 const $pmCell = $('<td>').addClass('column-pm').text(project.pm_name || '');
                                 const $slaCell = $('<td>').addClass('column-sla').text(project.sla_name || '');
@@ -2763,7 +2154,6 @@ console.log('admin.js file loaded - v1.0.1');
                     try {
                         allEmployees = JSON.parse(projectEmployeesJson);
                     } catch(e) {
-                        console.error('Failed to parse employees JSON:', e);
                     }
                 }
                 
@@ -2811,7 +2201,6 @@ console.log('admin.js file loaded - v1.0.1');
                     assignedEmps.forEach(emp => {
                         const empData = currentEmployeesData.find(e => e.id == emp.id);
                         const isHlavny = empData && (empData.is_hlavny == 1 || empData.is_hlavny === '1' || empData.is_hlavny === true);
-                        console.log('Employee:', emp.meno_priezvisko, 'isHlavny from DB:', empData.is_hlavny, 'Interpreted as:', isHlavny);
                         html += '<div style="display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: 3px; background: #fffacd;">';
                         html += '<input type="checkbox" class="emp-checkbox" value="' + emp.id + '" checked>';
                         html += '<label style="margin: 0; cursor: pointer; flex: 1; display: flex; align-items: center; gap: 6px;">';
@@ -2933,7 +2322,6 @@ console.log('admin.js file loaded - v1.0.1');
                     try {
                         employees = JSON.parse(selectedJson);
                     } catch(e) {
-                        console.error('Failed to parse selected employees:', e);
                     }
                 }
                 
@@ -2967,8 +2355,6 @@ console.log('admin.js file loaded - v1.0.1');
                     employees: JSON.stringify(employees)
                 };
                 
-                console.log('AJAX Data to be sent:', ajaxData);
-                console.log('Employees array:', employees);
 
                 $.ajax({
                     type: 'POST',
@@ -3031,7 +2417,6 @@ console.log('admin.js file loaded - v1.0.1');
             // Search in employees - DYNAMIC (keyup + input for better compatibility)
             $(document).on('keyup input', '#project-employees-search', function() {
                 const query = ($(this).val() || '').toLowerCase().trim();
-                console.log('Search query:', query);
                 console.log('Total employee items found:', $('#project-employees-list .employee-item').length);
                 
                 if (query === '') {
@@ -3043,14 +2428,12 @@ console.log('admin.js file loaded - v1.0.1');
                 // Searching - show all matching
                 let foundCount = 0;
                 const items = $('#project-employees-list .employee-item');
-                console.log('Searching in', items.length, 'items');
                 
                 items.each(function(idx) {
                     const $item = $(this);
                     const empName = $item.find('.employee-checkbox').data('emp-name') || '';
                     const empLabel = $item.find('.employee-checkbox label').first().text() || '';
                     
-                    console.log('Item ' + idx + ':', empName, 'label:', empLabel);
                     
                     // Check both data-emp-name and text content
                     const matchesName = empName && empName.includes(query);
@@ -3059,12 +2442,10 @@ console.log('admin.js file loaded - v1.0.1');
                     if (matchesName || matchesLabel) {
                         $item.show();
                         foundCount++;
-                        console.log('✓ Match found');
                     } else {
                         $item.hide();
                     }
                 });
-                console.log('Total found:', foundCount);
             });
             
             // Toggle all/checked button
@@ -3200,31 +2581,32 @@ console.log('admin.js file loaded - v1.0.1');
 
             // Filter functionality
             function filterBugsTable() {
-                const searchText = $('#filter-bugs-search').val().toLowerCase();
-                const selectedOS = $('#filter-bugs-os').val();
-                const selectedProduct = $('#filter-bugs-product').val();
+                const searchText = $('#filter-bugs-search').val().toLowerCase().trim();
+                const selectedOS = $('#filter-bugs-os').val().toLowerCase().trim();
+                const selectedProduct = $('#filter-bugs-product').val().toLowerCase().trim();
 
                 $('#helpdesk-bugs-table tbody tr').each(function() {
                     const $row = $(this);
-                    const kod = $row.find('.column-kod').text().toLowerCase();
-                    const nazov = $row.find('.column-name').text().toLowerCase();
-                    const os = $row.data('os');
-                    const product = $row.data('product');
+                    const kod = $row.find('.column-kod').text().toLowerCase().trim();
+                    const nazov = $row.find('.column-name').text().toLowerCase().trim();
+                    const os = ($row.data('os') || '').toString().toLowerCase().trim();
+                    const product = ($row.data('product') || '').toString().toLowerCase().trim();
+                    const tagy = $row.find('.column-tagy').text().toLowerCase();
 
                     let show = true;
 
-                    // Search filter
-                    if (searchText && !kod.includes(searchText) && !nazov.includes(searchText)) {
+                    // Search filter - search in kod, nazov, and tagy
+                    if (searchText && !kod.includes(searchText) && !nazov.includes(searchText) && !tagy.includes(searchText)) {
                         show = false;
                     }
 
                     // OS filter
-                    if (selectedOS && os != selectedOS) {
+                    if (selectedOS && os !== selectedOS) {
                         show = false;
                     }
 
                     // Product filter
-                    if (selectedProduct && product != selectedProduct) {
+                    if (selectedProduct && product !== selectedProduct) {
                         show = false;
                     }
 
@@ -3265,7 +2647,6 @@ console.log('admin.js file loaded - v1.0.1');
 
                 // Store uplny_popis in hidden input for later use
                 $('#bug-uplny_popis').val(uplny_popis || '');
-                console.log('kod_chyby changed, uplny_popis:', uplny_popis);
 
                 // Auto-fill fields if they are empty
                 if (popis && $('#bug-nazov').val() === '') {
@@ -3297,7 +2678,6 @@ console.log('admin.js file loaded - v1.0.1');
                     },
                     dataType: 'json',
                     success: function(response) {
-                        console.log('AP HD Worker response:', response);
                         
                         if (response.success && response.data.pracovnik_id) {
                             const pracovnikId = response.data.pracovnik_id;
@@ -3314,29 +2694,23 @@ console.log('admin.js file loaded - v1.0.1');
                                 },
                                 dataType: 'json',
                                 success: function(sigResponse) {
-                                    console.log('Signature response:', sigResponse);
                                     
                                     if (sigResponse.success && sigResponse.data && sigResponse.data.id) {
                                         // Auto-select the signature
                                         $('#bug-podpis').val(sigResponse.data.id);
-                                        console.log('Signature auto-preset to:', sigResponse.data.id);
                                     } else {
-                                        console.log('No signature found for employee and product');
                                         $('#bug-podpis').val('');
                                     }
                                 },
                                 error: function(xhr, status, error) {
-                                    console.error('Error getting signature:', error);
                                     $('#bug-podpis').val('');
                                 }
                             });
                         } else {
-                            console.log('No APHD worker configured');
                             $('#bug-podpis').val('');
                         }
                     },
                     error: function(xhr, status, error) {
-                        console.error('Error getting AP HD worker:', error);
                     }
                 });
             });
@@ -3419,7 +2793,6 @@ console.log('admin.js file loaded - v1.0.1');
                 e.preventDefault();
                 const id = $('#bug-id').val();
 
-                console.log('Bug form submitted');
 
                 $.ajax({
                     type: 'POST',
@@ -3440,7 +2813,6 @@ console.log('admin.js file loaded - v1.0.1');
                     },
                     dataType: 'json',
                     success: function(response) {
-                        console.log('Response:', response);
                         $('.error-message').text('');
                         if (response.success) {
                             alert(response.data.message);
@@ -3456,7 +2828,6 @@ console.log('admin.js file loaded - v1.0.1');
                         }
                     },
                     error: function(xhr, status, error) {
-                        console.error('AJAX error:', error, 'Status:', status, 'Response:', xhr.responseText);
                         alert('AJAX chyba pri uložení chyby: ' + error + '\n' + xhr.responseText);
                     }
                 });
@@ -3503,7 +2874,6 @@ console.log('admin.js file loaded - v1.0.1');
                     success: function(response) {
                         if (response.success) {
                             const bug = response.data.bug;
-                            console.log('Loaded bug data:', bug);
                             $('#bug-id').val(bug.id);
                             $('#bug-nazov').val(bug.nazov);
                             $('#bug-popis-problem').val(bug.popis_problem || '');
@@ -3588,10 +2958,17 @@ console.log('admin.js file loaded - v1.0.1');
             const file = this.files[0];
             if (!file) return;
 
-            console.log('Preview CSV import file:', file.name);
+            // Start async import process
+            startAsyncImportEmployees(file);
+            this.value = '';
+        });
 
+        /**
+         * Async Import - Start Session
+         */
+        function startAsyncImportEmployees(file) {
             const formData = new FormData();
-            formData.append('action', 'helpdesk_preview_import_employees');
+            formData.append('action', 'helpdesk_import_employees_start');
             formData.append('_ajax_nonce', nonce);
             formData.append('csv_file', file);
 
@@ -3602,126 +2979,139 @@ console.log('admin.js file loaded - v1.0.1');
                 processData: false,
                 contentType: false,
                 success: function(response) {
-                    console.log('Preview response:', response);
                     if (response.success) {
-                        showImportSelectionDialog(response.data.employees, file);
+                        showImportProgressModal(response.data);
                     } else {
-                        alert('Chyba pri čítaní CSV: ' + response.data.message);
+                        alert('Chyba pri iniciálizácii importu: ' + response.data.message);
                     }
                 },
                 error: function(xhr, status, error) {
                     alert('AJAX chyba: ' + error);
                 }
             });
+        }
 
-            // Reset input
-            this.value = '';
-        });
+        /**
+         * Show progress bar and process batches
+         */
+        function showImportProgressModal(sessionData) {
+            const modalId = 'import-progress-modal-' + Date.now();
+            const sessionId = sessionData.session_id;
+            const totalBatches = sessionData.total_batches;
+            const totalRows = sessionData.total_rows;
 
-        function showImportSelectionDialog(employees, csvFile) {
-            // Create modal
-            const modalId = 'import-selection-modal-' + Date.now();
-            
-            let html = '<div class="import-selection-modal" id="' + modalId + '" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; background: white; border: 2px solid #0073aa; border-radius: 5px; padding: 0; box-shadow: 0 5px 30px rgba(0,0,0,0.3); max-width: 700px; max-height: 80vh; overflow-y: auto;">';
+            let html = '<div class="import-progress-modal" id="' + modalId + '" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; background: white; border: 2px solid #0073aa; border-radius: 5px; padding: 0; box-shadow: 0 5px 30px rgba(0,0,0,0.3); width: 500px;">';
             
             html += '<div style="padding: 20px; background-color: #f9f9f9; border-bottom: 1px solid #ddd;">';
-            html += '<h2 style="margin: 0 0 10px 0; color: #0073aa;">Výber pracovníkov na import</h2>';
-            html += '<p style="margin: 0; color: #666;">Celkom: ' + employees.length + ' pracovníkov. Zaškrtnite ktorých chcete importovať.</p>';
+            html += '<h2 style="margin: 0; color: #0073aa;">Asynchronný import pracovníkov</h2>';
             html += '</div>';
             
             html += '<div style="padding: 20px;">';
+            html += '<p style="color: #666; margin: 0 0 15px 0;">Spracovávam ' + totalRows + ' pracovníkov v ' + totalBatches + ' dávkach...</p>';
             
-            // Controls
-            html += '<div style="margin-bottom: 15px; display: flex; gap: 10px;">';
-            html += '<button class="button button-secondary select-all-employees" style="cursor: pointer;">✓ Vybrať všetkých</button>';
-            html += '<button class="button button-secondary deselect-all-employees" style="cursor: pointer;">✗ Zrušiť všetko</button>';
+            html += '<div style="width: 100%; height: 30px; background: #e0e0e0; border-radius: 15px; overflow: hidden; margin-bottom: 10px;">';
+            html += '<div id="import-progress-bar" style="height: 100%; background: linear-gradient(90deg, #0073aa, #00a0d2); width: 0%; transition: width 0.3s ease; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px;">0%</div>';
             html += '</div>';
             
-            // Employee list
-            html += '<div style="border: 1px solid #ddd; border-radius: 3px; max-height: 400px; overflow-y: auto;">';
-            
-            employees.forEach(function(emp, idx) {
-                const statusClass = emp.exists ? 'existing' : 'new';
-                const statusText = emp.exists ? '📝 Existujúci (aktualizácia)' : '✨ Nový pracovník';
-                const statusColor = emp.exists ? '#ffc107' : '#28a745';
-                
-                let details = '';
-                if (emp.exists && emp.existing_phone) {
-                    details = ' (Klapka: ' + emp.existing_phone + ')';
-                }
-                
-                html += '<div style="padding: 12px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px;">';
-                html += '<input type="checkbox" class="employee-import-checkbox" data-name="' + emp.name.replace(/"/g, '&quot;') + '" checked style="width: 18px; height: 18px; cursor: pointer;">';
-                html += '<div style="flex: 1;">';
-                html += '<strong>' + emp.name + '</strong>';
-                html += '<div style="font-size: 12px; color: #666; margin-top: 3px;">';
-                html += 'Klapka: ' + (emp.phone || '-') + ' | Mobil: ' + (emp.mobile || '-') + '<br/>';
-                html += '<span style="background-color: ' + statusColor + '; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; display: inline-block; margin-top: 3px;">' + statusText + details + '</span>';
-                html += '</div>';
-                html += '</div>';
-                html += '</div>';
-            });
-            
+            html += '<div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 13px;">';
+            html += '<span>Pokrok: <strong id="import-progress-text">0/' + totalBatches + ' dávok</strong></span>';
+            html += '<span>Stav: <strong id="import-status">Inicializácia...</strong></span>';
             html += '</div>';
             
+            html += '<div id="import-results" style="background: #f5f5f5; padding: 10px; border-radius: 3px; min-height: 40px; max-height: 200px; overflow-y: auto; font-size: 12px; color: #333; margin-bottom: 15px;"></div>';
+            
+            html += '<div style="text-align: right;">';
+            html += '<button id="import-cancel-btn" class="button button-secondary" style="cursor: pointer;">Zrušiť</button>';
             html += '</div>';
             
-            // Footer
-            html += '<div style="padding: 15px 20px; background-color: #f9f9f9; border-top: 1px solid #ddd; text-align: right; display: flex; gap: 10px; justify-content: flex-end;">';
-            html += '<button class="button" id="cancel-import-btn" style="cursor: pointer;">Zrušiť</button>';
-            html += '<button class="button button-primary" id="confirm-import-btn" style="cursor: pointer;">Importovať vybraných</button>';
-            html += '</div>';
+            html += '</div></div>';
             
-            html += '</div>';
-            
-            // Add backdrop
-            const backdropId = 'import-backdrop-' + Date.now();
-            let backdrop = '<div id="' + backdropId + '" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000;"></div>';
-            
-            // Insert into DOM
-            $('body').append(backdrop + html);
-            
-            // Event handlers
-            $(document).on('click', '.select-all-employees', function() {
-                $('#' + modalId + ' .employee-import-checkbox').prop('checked', true);
-            });
-            
-            $(document).on('click', '.deselect-all-employees', function() {
-                $('#' + modalId + ' .employee-import-checkbox').prop('checked', false);
-            });
-            
-            $(document).on('click', '#cancel-import-btn', function() {
+            // Add overlay
+            $('body').append('<div id="' + modalId + '-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000;"></div>');
+            $('body').append(html);
+
+            // Cancel button
+            $(document).on('click', '#import-cancel-btn', function() {
+                $('#' + modalId + '-overlay').remove();
                 $('#' + modalId).remove();
-                $('#' + backdropId).remove();
             });
-            
-            $(document).on('click', '#confirm-import-btn', function() {
-                // Get selected employees
-                const selectedEmployees = [];
-                $('#' + modalId + ' .employee-import-checkbox:checked').each(function() {
-                    selectedEmployees.push({
-                        'name': $(this).data('name')
-                    });
-                });
-                
-                if (selectedEmployees.length === 0) {
-                    alert('Musíte vybrať aspoň jedného pracovníka!');
-                    return;
+
+            // Start batch processing
+            processBatch(sessionId, 1, totalBatches, 0, 0, modalId);
+        }
+
+        /**
+         * Process one batch
+         */
+        function processBatch(sessionId, batchNum, totalBatches, totalImported, totalUpdated, modalId) {
+            $.ajax({
+                type: 'POST',
+                url: ajaxurl,
+                data: {
+                    action: 'helpdesk_import_employees_batch',
+                    _ajax_nonce: nonce,
+                    session_id: sessionId,
+                    batch_num: batchNum
+                },
+                success: function(response) {
+                    if (response.success) {
+                        const data = response.data;
+                        const newTotal = totalImported + data.imported;
+                        const newUpdated = totalUpdated + data.updated;
+                        
+                        // Update UI
+                        $('#import-progress-bar').css('width', data.progress + '%').text(data.progress + '%');
+                        $('#import-progress-text').text(batchNum + '/' + totalBatches + ' dávok');
+                        $('#import-status').text(data.message);
+                        
+                        // Log results
+                        $('#import-results').append('<div>✓ ' + data.message + '</div>');
+                        $('#import-results').scrollTop($('#import-results')[0].scrollHeight);
+                        
+                        // Next batch or finish
+                        if (batchNum < totalBatches) {
+                            setTimeout(function() {
+                                processBatch(sessionId, batchNum + 1, totalBatches, newTotal, newUpdated, modalId);
+                            }, 100); // Malá pauza medzi dávkami
+                        } else {
+                            // Hotovo
+                            finishAsyncImport(newTotal, newUpdated, modalId);
+                        }
+                    } else {
+                        $('#import-status').text('❌ Chyba: ' + response.data.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    $('#import-status').text('❌ AJAX chyba: ' + error);
                 }
-                
-                console.log('Selected employees:', selectedEmployees);
-                
-                // Perform import with selected employees
-                performImportWithSelection(csvFile, selectedEmployees);
-                
-                // Close modal
-                $('#' + modalId).remove();
-                $('#' + backdropId).remove();
             });
         }
 
+        /**
+         * Finish async import
+         */
+        function finishAsyncImport(imported, updated, modalId) {
+            $('#import-progress-bar').css('background', '#28a745');
+            $('#import-status').text('✓ Import hotový!');
+            
+            const summary = '<strong style="color: #28a745;">Import úspešne ukončený</strong><br>' +
+                            'Nových: <strong>' + imported + '</strong><br>' +
+                            'Aktualizovaných: <strong>' + updated + '</strong>';
+            
+            $('#import-results').html(summary);
+
+            // Reload table after 2 seconds
+            setTimeout(function() {
+                location.reload();
+            }, 2000);
+        }
+        function showImportSelectionDialog(employees, csvFile) {
+            // Deprecated - now using async import
+            console.log('showImportSelectionDialog called with', employees.length, 'employees');
+            performImportWithSelection(csvFile, employees);
+        }
+
         function performImportWithSelection(csvFile, selectedEmployees) {
-            console.log('Performing import with ' + selectedEmployees.length + ' selected employees');
             
             const formData = new FormData();
             formData.append('action', 'helpdesk_import_employees');
@@ -3736,7 +3126,6 @@ console.log('admin.js file loaded - v1.0.1');
                 processData: false,
                 contentType: false,
                 success: function(response) {
-                    console.log('Import response:', response);
                     if (response.success) {
                         showImportResultWindow(response.data);
                     } else {
@@ -3744,7 +3133,6 @@ console.log('admin.js file loaded - v1.0.1');
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('Import error:', error);
                     alert('AJAX chyba: ' + error);
                 }
             });
@@ -3849,7 +3237,6 @@ console.log('admin.js file loaded - v1.0.1');
             const file = this.files[0];
             if (!file) return;
 
-            console.log('Importing projects file:', file.name, file.size, file.type);
 
             const formData = new FormData();
             formData.append('action', 'helpdesk_import_projects');
@@ -3863,11 +3250,9 @@ console.log('admin.js file loaded - v1.0.1');
                 processData: false,
                 contentType: false,
                 success: function(response) {
-                    console.log('Import response:', response);
                     if (response.success) {
                         alert('Importovanie úspešné: ' + response.data.message);
                         if (response.data.warnings && response.data.warnings.length > 0) {
-                            console.warn('Upozornenia:', response.data.warnings);
                         }
                         location.reload();
                     } else {
@@ -3875,7 +3260,6 @@ console.log('admin.js file loaded - v1.0.1');
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('Import error:', xhr, status, error);
                     alert('AJAX chyba: ' + error);
                 },
                 complete: function() {
@@ -3927,7 +3311,6 @@ console.log('admin.js file loaded - v1.0.1');
             const file = this.files[0];
             if (!file) return;
 
-            console.log('Importing bugs file:', file.name, file.size, file.type);
 
             const formData = new FormData();
             formData.append('action', 'helpdesk_import_bugs');
@@ -3941,11 +3324,9 @@ console.log('admin.js file loaded - v1.0.1');
                 processData: false,
                 contentType: false,
                 success: function(response) {
-                    console.log('Import response:', response);
                     if (response.success) {
                         alert('Importovanie úspešné: ' + response.data.message);
                         if (response.data.warnings && response.data.warnings.length > 0) {
-                            console.warn('Upozornenia:', response.data.warnings);
                         }
                         location.reload();
                     } else {
@@ -3953,7 +3334,6 @@ console.log('admin.js file loaded - v1.0.1');
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('Import error:', xhr, status, error);
                     alert('AJAX chyba: ' + error);
                 }
             });
@@ -3973,7 +3353,6 @@ console.log('admin.js file loaded - v1.0.1');
         });
 
         // ===== SEARCH FUNCTIONALITY =====
-        console.log('Setting up search handlers');
 
         // Helper function to filter table by specific columns
         function filterTable(searchInputId, tableId, columnIndices) {
@@ -3986,11 +3365,9 @@ console.log('admin.js file loaded - v1.0.1');
             }
             
             if ($searchInput.length === 0) {
-                console.warn('Search input not found: ' + searchInputId);
                 return;
             }
             if ($table.length === 0) {
-                console.warn('Table not found: ' + tableId);
                 return;
             }
 
@@ -4196,7 +3573,6 @@ console.log('admin.js file loaded - v1.0.1');
                         }
                     },
                     error: function(xhr, status, error) {
-                        console.log('Code lookup not found or error');
                         // Toto je OK - kód nemusí existovať pri vytváraní nového
                     }
                 });
@@ -4217,7 +3593,6 @@ console.log('admin.js file loaded - v1.0.1');
             const produkt = $('#code-produkt').val();
             const aktivny = $('#code-aktivny').is(':checked') ? 1 : 0;
 
-            console.log('Saving bug code:', { id, kod, popis, uplny_popis, operacny_system, produkt, aktivny });
 
             $.ajax({
                 type: 'POST',
@@ -4235,7 +3610,6 @@ console.log('admin.js file loaded - v1.0.1');
                 },
                 dataType: 'json',
                 success: function(response) {
-                    console.log('Bug code save response:', response);
                     $('.error-message').text('');
                     if (response.success) {
                         alert(response.data.message);
@@ -4245,7 +3619,6 @@ console.log('admin.js file loaded - v1.0.1');
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('Bug code save error:', error, 'Status:', status, 'Response:', xhr.responseText);
                     alert('AJAX chyba: ' + error + '\n\n' + xhr.responseText);
                 }
             });
@@ -4313,6 +3686,84 @@ console.log('admin.js file loaded - v1.0.1');
             }
         });
 
+        // View solutions for bug code
+        $(document).on('click', '#helpdesk-codes-table .helpdesk-btn-view-solutions', function() {
+            const codeId = $(this).data('id');
+            const codeKod = $(this).closest('tr').find('.column-kod').text();
+            
+            
+            // Load solutions from server
+            $.ajax({
+                type: 'POST',
+                url: ajaxurl,
+                data: {
+                    action: 'helpdesk_get_solutions_for_code',
+                    _ajax_nonce: nonce,
+                    code_id: codeId
+                },
+                dataType: 'json',
+                success: function(response) {
+                    
+                    if (response.success) {
+                        const solutions = response.data.solutions || [];
+                        
+                        // Create modal content
+                        let solutionsHtml = '';
+                        
+                        if (solutions.length > 0) {
+                            solutions.forEach(function(solution) {
+                                solutionsHtml += '<div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">';
+                                solutionsHtml += '<span><strong>' + (solution.nazov || 'Bez názvu') + '</strong></span>';
+                                solutionsHtml += '<a href="#" class="button button-small view-solution-btn" data-id="' + solution.id + '" style="margin-left: 10px;">Zobraziť</a>';
+                                solutionsHtml += '</div>';
+                            });
+                        } else {
+                            solutionsHtml = '<p style="padding: 15px; color: #666; text-align: center;">Nie sú dostupné žiadne riešenia pre tento problém.</p>';
+                        }
+                        
+                        // Create and show modal
+                        const modalId = 'solutions-modal-' + codeId;
+                        const $modal = $('<div id="' + modalId + '" class="helpdesk-modal" style="display: block; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.5); z-index: 99999; display: flex; align-items: center; justify-content: center;">' +
+                            '<div class="helpdesk-modal-content" style="background: white; border-radius: 5px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); max-width: 600px; width: 90%; max-height: 70vh; overflow-y: auto;">' +
+                            '<div class="helpdesk-modal-header" style="border-bottom: 1px solid #eee; padding: 15px; display: flex; justify-content: space-between; align-items: center;">' +
+                            '<h2 style="margin: 0;">Riešenia - ' + codeKod + '</h2>' +
+                            '<button class="helpdesk-modal-close" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>' +
+                            '</div>' +
+                            '<div class="helpdesk-modal-body" style="padding: 15px;">' + solutionsHtml + '</div>' +
+                            '</div></div>');
+                        
+                        $('body').append($modal);
+                        
+                        // Close modal on close button click
+                        $modal.find('.helpdesk-modal-close').on('click', function(e) {
+                            e.preventDefault();
+                            $modal.fadeOut(200, function() { $modal.remove(); });
+                        });
+                        
+                        // Close modal on background click
+                        $modal.on('click', function(e) {
+                            if (e.target === this) {
+                                $(this).fadeOut(200, function() { $(this).remove(); });
+                            }
+                        });
+                        
+                        // Handle view solution button
+                        $modal.find('.view-solution-btn').on('click', function(e) {
+                            e.preventDefault();
+                            const solutionId = $(this).data('id');
+                            // Navigate to solution edit page
+                            window.location.href = '?page=helpdesk-bugs&tab=bugs&id=' + solutionId;
+                        });
+                    } else {
+                        alert('Chyba: ' + (response.data.message || 'Neznáma chyba pri načítaní riešení'));
+                    }
+                },
+                error: function(xhr, status, error) {
+                    alert('Chyba pri načítaní riešení: ' + error);
+                }
+            });
+        });
+
         // Filter codes
         $(document).on('input change', '#filter-search, #filter-os, #filter-product, #filter-status', function() {
             const searchText = $('#filter-search').val().toLowerCase();
@@ -4376,7 +3827,6 @@ console.log('admin.js file loaded - v1.0.1');
             const popis = $('#os-popis').val();
             const aktivny = $('#os-aktivny').is(':checked') ? 1 : 0;
 
-            console.log('Saving OS:', { id, nazov, zkratka, popis, aktivny });
 
             $.ajax({
                 type: 'POST',
@@ -4392,7 +3842,6 @@ console.log('admin.js file loaded - v1.0.1');
                 },
                 dataType: 'json',
                 success: function(response) {
-                    console.log('OS save response:', response);
                     $('.error-message').text('');
                     if (response.success) {
                         alert(response.data.message);
@@ -4402,7 +3851,6 @@ console.log('admin.js file loaded - v1.0.1');
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('OS save error:', error, 'Status:', status, 'Response:', xhr.responseText);
                     alert('AJAX chyba: ' + error + '\n\n' + xhr.responseText);
                 }
             });
@@ -4492,7 +3940,6 @@ console.log('admin.js file loaded - v1.0.1');
             const poznamka = $('#helpdesk-contact-poznamka').val();
             const aktivny = $('#helpdesk-contact-aktivny').is(':checked') ? 1 : 0;
 
-            console.log('Saving contact:', { id, nazov, kontaktna_osoba, klapka, telefon, email, poznamka, aktivny });
 
             $.ajax({
                 type: 'POST',
@@ -4511,7 +3958,6 @@ console.log('admin.js file loaded - v1.0.1');
                 },
                 dataType: 'json',
                 success: function(response) {
-                    console.log('Contact save response:', response);
                     $('.error-message').text('');
                     if (response.success) {
                         alert(response.data.message);
@@ -4527,7 +3973,6 @@ console.log('admin.js file loaded - v1.0.1');
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('Contact save error:', error, 'Status:', status, 'Response:', xhr.responseText);
                     alert('AJAX chyba pri uložení kontaktu: ' + error);
                 }
             });
@@ -4618,7 +4063,6 @@ console.log('admin.js file loaded - v1.0.1');
             const link = $('#product-link').val();
             const aktivny = $('#product-aktivny').is(':checked') ? 1 : 0;
 
-            console.log('Saving product:', { id, nazov, popis, link, aktivny });
 
             $.ajax({
                 type: 'POST',
@@ -4634,7 +4078,6 @@ console.log('admin.js file loaded - v1.0.1');
                 },
                 dataType: 'json',
                 success: function(response) {
-                    console.log('Product save response:', response);
                     $('.error-message').text('');
                     if (response.success) {
                         alert(response.data.message);
@@ -4644,7 +4087,6 @@ console.log('admin.js file loaded - v1.0.1');
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('Product save error:', error, 'Status:', status, 'Response:', xhr.responseText);
                     alert('AJAX chyba: ' + error + '\n\n' + xhr.responseText);
                 }
             });
@@ -4731,7 +4173,6 @@ console.log('admin.js file loaded - v1.0.1');
             const skratka = $('#position-skratka').val();
             const priorita = $('#position-priorita').val();
 
-            console.log('Saving position:', { id, profesia, skratka, priorita });
 
             $.ajax({
                 type: 'POST',
@@ -4746,7 +4187,6 @@ console.log('admin.js file loaded - v1.0.1');
                 },
                 dataType: 'json',
                 success: function(response) {
-                    console.log('Position save response:', response);
                     $('.error-message').text('');
                     if (response.success) {
                         alert(response.data.message);
@@ -4756,7 +4196,6 @@ console.log('admin.js file loaded - v1.0.1');
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('Position save error:', error);
                     alert('AJAX chyba: ' + error);
                 }
             });
@@ -4840,7 +4279,6 @@ console.log('admin.js file loaded - v1.0.1');
             const file = this.files[0];
             if (!file) return;
 
-            console.log('Importing positions file:', file.name, file.size, file.type);
 
             const formData = new FormData();
             formData.append('action', 'helpdesk_import_positions');
@@ -4854,11 +4292,9 @@ console.log('admin.js file loaded - v1.0.1');
                 processData: false,
                 contentType: false,
                 success: function(response) {
-                    console.log('Import response:', response);
                     if (response.success) {
                         alert('Importovanie úspešné: ' + response.data.message);
                         if (response.data.warnings && response.data.warnings.length > 0) {
-                            console.warn('Upozornenia:', response.data.warnings);
                         }
                         location.reload();
                     } else {
@@ -4866,7 +4302,6 @@ console.log('admin.js file loaded - v1.0.1');
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('Import error:', xhr, status, error);
                     alert('AJAX chyba: ' + error);
                 }
             });
@@ -4877,18 +4312,17 @@ console.log('admin.js file loaded - v1.0.1');
     }
 
     function initStandby() {
-        console.log('=== initStandby started ===');
         
         // Tab switching
         $(document).on('click', '.helpdesk-tab-btn', function() {
             const tabName = $(this).data('tab');
             
-            // Hide all tabs
-            $('.helpdesk-tab-content').hide();
+            // Remove active from all tabs
+            $('.helpdesk-tab-content').removeClass('active');
             $('.helpdesk-tab-btn').css('border-bottom-color', 'transparent');
             
-            // Show selected tab
-            $('#' + tabName + '-tab').show();
+            // Add active to selected tab
+            $('#' + tabName + '-tab').addClass('active');
             $(this).css('border-bottom-color', '#007cba');
         });
         
@@ -4902,22 +4336,18 @@ console.log('admin.js file loaded - v1.0.1');
         };
 
         $(document).on('click', 'th.sortable', function() {
-            console.log('Sortable header clicked');
             const sortField = $(this).data('sort-field');
             const table = $(this).closest('table');
             
-            console.log('Sort field:', sortField);
             console.log('Table ID:', table.attr('id'));
             
             if (!sortField || !table.length) {
-                console.error('Invalid sort parameters');
                 return;
             }
             
             const tbody = table.find('tbody');
             const rows = tbody.find('tr').toArray();
             
-            console.log('Found', rows.length, 'rows to sort');
 
             // Determine sort direction
             if (standbyTableSortState.field === sortField) {
@@ -4927,7 +4357,6 @@ console.log('admin.js file loaded - v1.0.1');
             }
             standbyTableSortState.field = sortField;
 
-            console.log('Sort direction:', standbyTableSortState.asc ? 'ASC' : 'DESC');
 
             // Remove all sort indicators
             table.find('th.sortable .sort-indicator').hide();
@@ -4945,12 +4374,10 @@ console.log('admin.js file loaded - v1.0.1');
                     case 'meno_priezvisko':
                         aVal = $(a).find('td:first strong').text().toLowerCase().trim();
                         bVal = $(b).find('td:first strong').text().toLowerCase().trim();
-                        console.log('Comparing names:', aVal, 'vs', bVal);
                         break;
                     case 'zakaznicke_cislo':
                         aVal = $(a).find('td:eq(1)').text().toLowerCase().trim();
                         bVal = $(b).find('td:eq(1)').text().toLowerCase().trim();
-                        console.log('Comparing projects:', aVal, 'vs', bVal);
                         break;
                     case 'pohotovost_od':
                         aVal = $(a).data('date-from') || '';
@@ -4975,84 +4402,51 @@ console.log('admin.js file loaded - v1.0.1');
                 }
             });
 
-            console.log('Re-appending sorted rows');
             // Re-append sorted rows
             rows.forEach(row => {
                 tbody.append(row);
             });
             
-            console.log('Sort complete');
         });
 
-        // New standby button
+        // New standby button - updated for new modal
         $(document).on('click', '.helpdesk-btn-new-standby', function() {
-            console.log('New standby button clicked');
-            $('#standby-id').val('');
-            $('#standby-employee-id').val('');
-            $('#standby-project-id').val('');
-            $('#standby-od').val('');
-            $('#standby-do').val('');
-            $('#helpdesk-standby-modal-form')[0].reset();
-            $('#standby-modal-title').text('Pridať pohotovosť');
-            $('#helpdesk-standby-modal').show();
-            $('.error-message').text('');
+            // Reset form and show modal with vanilla JS approach
+            const form = document.getElementById('helpdesk-standby-modal-form');
+            const modal = document.getElementById('helpdesk-standby-modal');
+            
+            if (form && modal) {
+                form.reset();
+                // Set to manual mode by default
+                const manualRadio = document.getElementById('standby-type-manual');
+                if (manualRadio) {
+                    manualRadio.checked = true;
+                    document.getElementById('standby-manual-section').style.display = 'block';
+                    document.getElementById('standby-auto-section').style.display = 'none';
+                }
+                // Show modal using CSS class
+                modal.classList.add('show');
+                const errorMsg = document.querySelector('#helpdesk-standby-modal-form .error-message');
+                if (errorMsg) {
+                    errorMsg.style.display = 'none';
+                }
+            }
         });
 
         // Close modal
         $(document).on('click', '#helpdesk-standby-modal .helpdesk-modal-close, #helpdesk-standby-modal .helpdesk-modal-close-btn', function() {
-            console.log('Closing standby modal');
-            $('#helpdesk-standby-modal').hide();
-        });
-
-        // Submit form
-        $(document).on('submit', '#helpdesk-standby-modal-form', function(e) {
-            e.preventDefault();
-            console.log('Standby form submitted');
-            
-            const id = $('#standby-id').val();
-            const employeeId = $('#standby-employee-id').val();
-            const projectId = $('#standby-project-id').val();
-            const od = $('#standby-od').val();
-            const doDate = $('#standby-do').val();
-
-            if (!employeeId || !projectId || !od || !doDate) {
-                alert('Prosím vyplňte všetky polia');
-                return;
+            const modal = document.getElementById('helpdesk-standby-modal');
+            if (modal) {
+                modal.classList.remove('show');
             }
-
-            $.ajax({
-                type: 'POST',
-                url: ajaxurl,
-                data: {
-                    action: 'helpdesk_save_standby',
-                    _ajax_nonce: nonce,
-                    id: id,
-                    employee_id: employeeId,
-                    project_id: projectId,
-                    date_from: od,
-                    date_to: doDate
-                },
-                dataType: 'json',
-                success: function(response) {
-                    console.log('Save response:', response);
-                    if (response.success) {
-                        alert(response.data.message || 'Pohotovosť bola uložená');
-                        location.reload();
-                    } else {
-                        alert('Chyba: ' + (response.data.message || 'Neznáma chyba'));
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error('AJAX error:', error);
-                    alert('AJAX chyba: ' + error);
-                }
-            });
         });
+
+        // Note: Form submission is handled in the admin-standby.php view with vanilla JS
+        // to support both manual and automatic standby generation modes
 
         // Edit button
         $(document).on('click', '.helpdesk-btn-edit-standby', function() {
             const id = $(this).data('standby-id');
-            console.log('Edit standby:', id);
             
             $.ajax({
                 type: 'POST',
@@ -5064,7 +4458,6 @@ console.log('admin.js file loaded - v1.0.1');
                 },
                 dataType: 'json',
                 success: function(response) {
-                    console.log('Get response:', response);
                     if (response.success) {
                         const standby = response.data.standby;
                         $('#standby-id').val(standby.id);
@@ -5079,7 +4472,6 @@ console.log('admin.js file loaded - v1.0.1');
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('Error:', error);
                     alert('Chyba pri načítaní');
                 }
             });
@@ -5132,12 +4524,6 @@ console.log('admin.js file loaded - v1.0.1');
             const filterToday = $('#filter-today').is(':checked');
             const today = new Date().toISOString().split('T')[0];
             
-            console.log('=== Filter Standby ===');
-            console.log('Employee ID:', employeeId);
-            console.log('Project ID:', projectId);
-            console.log('Position Filter:', positionFilter);
-            console.log('Filter Today:', filterToday);
-            console.log('Today date:', today);
 
             $('#helpdesk-standby-list tr').each(function() {
                 const row = $(this);
@@ -5313,7 +4699,6 @@ console.log('admin.js file loaded - v1.0.1');
 
         // Update employee positions from CSV (Step 2)
         $(document).on('click', '.helpdesk-btn-update-positions', function() {
-            console.log('Update positions button clicked');
             $('#helpdesk-standby-csv-input-update').click();
         });
 
@@ -5326,6 +4711,12 @@ console.log('admin.js file loaded - v1.0.1');
             formData.append('_ajax_nonce', nonce);
             formData.append('file', file);
 
+            // Show loading overlay
+            const loadingOverlay = document.getElementById('helpdesk-import-loading');
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'flex';
+            }
+
             $.ajax({
                 type: 'POST',
                 url: ajaxurl,
@@ -5334,7 +4725,11 @@ console.log('admin.js file loaded - v1.0.1');
                 contentType: false,
                 dataType: 'json',
                 success: function(response) {
-                    console.log('Update positions response:', response);
+                    // Hide loading overlay
+                    if (loadingOverlay) {
+                        loadingOverlay.style.display = 'none';
+                    }
+                    
                     if (response.success) {
                         let message = response.data.message + '\n\n';
                         if (response.data.errors && response.data.errors.length > 0) {
@@ -5351,7 +4746,11 @@ console.log('admin.js file loaded - v1.0.1');
                     $(this).val('');
                 },
                 error: function(xhr, status, error) {
-                    console.error('Update positions error:', error);
+                    // Hide loading overlay
+                    if (loadingOverlay) {
+                        loadingOverlay.style.display = 'none';
+                    }
+                    
                     alert('Chyba pri aktualizácii pozícií');
                     $(this).val('');
                 }
@@ -5360,7 +4759,6 @@ console.log('admin.js file loaded - v1.0.1');
 
         // Delete all standby records
         $(document).on('click', '.helpdesk-btn-delete-all-standby', function() {
-            console.log('Delete all standby button clicked');
             if (!confirm('Naozaj chceš vymazať VŠETKY pohotovosti?\n\nTáto akcia sa nedá vrátiť!')) {
                 return;
             }
@@ -5378,7 +4776,6 @@ console.log('admin.js file loaded - v1.0.1');
                 },
                 dataType: 'json',
                 success: function(response) {
-                    console.log('Delete all response:', response);
                     if (response.success) {
                         alert('✓ ' + response.data.message);
                         location.reload();
@@ -5387,7 +4784,6 @@ console.log('admin.js file loaded - v1.0.1');
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('Delete all error:', error);
                     alert('Chyba pri mazaní pohotovostí');
                 }
             });
@@ -5395,7 +4791,6 @@ console.log('admin.js file loaded - v1.0.1');
 
         // Delete old standby records
         $(document).on('click', '.helpdesk-btn-delete-old-standby', function() {
-            console.log('Delete old standby button clicked');
             if (!confirm('Vymaž všetky pohotovosti, ktoré už skončili?\n\nTáto akcia sa nedá vrátiť!')) {
                 return;
             }
@@ -5409,7 +4804,6 @@ console.log('admin.js file loaded - v1.0.1');
                 },
                 dataType: 'json',
                 success: function(response) {
-                    console.log('Delete old standby response:', response);
                     if (response.success) {
                         alert('✓ ' + response.data.message);
                         location.reload();
@@ -5418,7 +4812,6 @@ console.log('admin.js file loaded - v1.0.1');
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('Delete old standby error:', error);
                     alert('Chyba pri mazaní starých pohotovostí');
                 }
             });
@@ -5426,7 +4819,6 @@ console.log('admin.js file loaded - v1.0.1');
 
         // Check for duplicate standby records
         $(document).on('click', '.helpdesk-btn-check-duplicates', function() {
-            console.log('Check duplicates button clicked');
             $.ajax({
                 type: 'POST',
                 url: ajaxurl,
@@ -5436,54 +4828,59 @@ console.log('admin.js file loaded - v1.0.1');
                 },
                 dataType: 'json',
                 success: function(response) {
-                    console.log('Duplicates check response:', response);
                     if (response.success) {
                         const data = response.data;
                         let message = 'Stav pohotovostí:\n';
                         message += 'Celkovo záznamov: ' + data.total_standby + '\n';
-                        message += 'Duplikáty: ' + data.duplicate_count + '\n\n';
+                        message += 'Vnorené pohotovosti: ' + data.nested_count + '\n\n';
                         
-                        if (data.duplicate_count > 0) {
-                            message += 'Duplikáty:\n';
-                            data.duplicates.forEach((dup, idx) => {
-                                message += (idx + 1) + '. Pracovník ID: ' + dup.pracovnik_id + 
-                                          ', Projekt ID: ' + dup.projekt_id + 
-                                          ', Počet: ' + dup.count + '\n';
+                        if (data.nested_count > 0) {
+                            message += 'VNORENÉ POHOTOVOSTI (krátke úplne vnútri dlhších):\n\n';
+                            let ids_to_delete = [];
+                            
+                            data.nested_groups.forEach((group, idx) => {
+                                const container = group.container;
+                                message += (idx + 1) + '. DĹŽKA: ' + container.pohotovost_od + ' až ' + container.pohotovost_do + ' (' + container.duration_days + ' dní)\n';
+                                
+                                group.nested.forEach((nested, nIdx) => {
+                                    message += '   └─ Vnorená: ' + nested.pohotovost_od + ' až ' + nested.pohotovost_do + ' (' + nested.duration_days + ' dní)\n';
+                                    ids_to_delete.push(nested.id);
+                                });
+                                message += '\n';
                             });
                             
-                            // Ask if user wants to remove duplicates
-                            if (confirm(message + '\n\nChcete odstrániť duplikáty? Ponechá sa len prvý záznam.')) {
-                                console.log('Removing duplicates...');
+                            // Ask if user wants to remove nested records
+                            if (confirm(message + '\nChcete odstrániť ' + ids_to_delete.length + ' vnorených záznamov?\n(Ponechajú sa iba dlhšie záznamy)')) {
                                 $.ajax({
                                     type: 'POST',
                                     url: ajaxurl,
                                     data: {
-                                        action: 'helpdesk_remove_standby_duplicates',
+                                        action: 'helpdesk_delete_overlapping_standby',
+                                        ids: ids_to_delete,
                                         _ajax_nonce: nonce
                                     },
                                     dataType: 'json',
-                                    success: function(removeResponse) {
-                                        if (removeResponse.success) {
-                                            alert('✓ ' + removeResponse.data.message);
+                                    success: function(deleteResponse) {
+                                        if (deleteResponse.success) {
+                                            alert('✓ ' + deleteResponse.data.message);
                                             location.reload();
                                         } else {
-                                            alert('Chyba: ' + (removeResponse.data.message || 'Neznáma chyba'));
+                                            alert('Chyba: ' + (deleteResponse.data.message || 'Neznáma chyba'));
                                         }
                                     },
                                     error: function(xhr, status, error) {
-                                        alert('AJAX chyba pri mazaní duplikátov: ' + error);
+                                        alert('AJAX chyba pri mazaní: ' + error);
                                     }
                                 });
                             }
                         } else {
-                            alert(message + '✓ Žiadne duplikáty nebyly nájdené.');
+                            alert(message + '✓ Žiadne vnorené pohotovosti nebyly nájdené.');
                         }
                     } else {
                         alert('Chyba: ' + (response.data.message || 'Neznáma chyba'));
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('Check duplicates error:', error);
                     alert('AJAX chyba pri kontrole duplikátov: ' + error);
                 }
             });
@@ -5501,6 +4898,12 @@ console.log('admin.js file loaded - v1.0.1');
             formData.append('action', 'helpdesk_import_standby');
             formData.append('_ajax_nonce', nonce);
 
+            // Show loading overlay
+            const loadingOverlay = document.getElementById('helpdesk-import-loading');
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'flex';
+            }
+
             $.ajax({
                 type: 'POST',
                 url: ajaxurl,
@@ -5509,6 +4912,11 @@ console.log('admin.js file loaded - v1.0.1');
                 contentType: false,
                 dataType: 'json',
                 success: function(response) {
+                    // Hide loading overlay
+                    if (loadingOverlay) {
+                        loadingOverlay.style.display = 'none';
+                    }
+                    
                     let message = response.data.message || 'Import ukončený';
                     if (response.data.warnings && response.data.warnings.length > 0) {
                         message += '\n\nUpozornenia:\n';
@@ -5531,7 +4939,11 @@ console.log('admin.js file loaded - v1.0.1');
                     location.reload();
                 },
                 error: function(xhr, status, error) {
-                    console.error('Import error:', error);
+                    // Hide loading overlay
+                    if (loadingOverlay) {
+                        loadingOverlay.style.display = 'none';
+                    }
+                    
                     let errorMsg = 'Chyba pri importe';
                     try {
                         const response = JSON.parse(xhr.responseText);
@@ -5550,7 +4962,6 @@ console.log('admin.js file loaded - v1.0.1');
 
     // ===== COMMUNICATION METHODS =====
     function initCommunicationMethods() {
-        console.log('=== initCommunicationMethods started ===');
 
         // Add new communication method button
         $(document).on('click', '.helpdesk-btn-new-communication-method', function() {
@@ -5675,12 +5086,10 @@ console.log('admin.js file loaded - v1.0.1');
             });
         });
 
-        console.log('=== initCommunicationMethods finished ===');
     }
 
     // ===== VACATIONS =====
     function initVacations() {
-        console.log('=== Initializing Vacations ===');
 
         // Helper function to normalize text (remove diacritics - accents)
         function normalizeText(text) {
@@ -5974,7 +5383,6 @@ console.log('admin.js file loaded - v1.0.1');
             });
         });
 
-        console.log('=== initVacations finished ===');
     }
 
     function initSignatures() {
@@ -6043,7 +5451,6 @@ console.log('admin.js file loaded - v1.0.1');
 
         $(document).on('click', '#helpdesk-signatures-table .helpdesk-btn-edit-signature', function() {
             const id = $(this).data('id');
-            console.log('Edit signature clicked, ID:', id);
             
             // Reset form before loading
             $('#helpdesk-signature-form')[0].reset();
@@ -6058,10 +5465,8 @@ console.log('admin.js file loaded - v1.0.1');
                 },
                 dataType: 'json',
                 success: function(response) {
-                    console.log('Signature loaded:', response.data);
                     if (response.success) {
                         const signature = response.data;
-                        console.log('Setting text_podpisu to:', signature.text_podpisu);
                         $('#signature-id').val(signature.id);
                         $('#signature-podpis').val(signature.podpis);
                         $('#signature-text-podpisu').val(signature.text_podpisu || '');
@@ -6108,12 +5513,10 @@ console.log('admin.js file loaded - v1.0.1');
             }
         });
 
-        console.log('=== initSignatures finished ===');
     }
 
     // ===== GENERAL GUIDES MODULE =====
     function initGeneralGuides() {
-        console.log('=== General Guides Init Start ===');
 
         var $guideSearchInput = $('#helpdesk-guides-search');
         var $guideCategoryFilter = $('#helpdesk-guides-category');
@@ -6128,7 +5531,7 @@ console.log('admin.js file loaded - v1.0.1');
                 type: 'POST',
                 data: {
                     action: 'helpdesk_get_products',
-                    nonce: nonce
+                    _wpnonce: nonce
                 },
                 dataType: 'json',
                 success: function(response) {
@@ -6347,11 +5750,9 @@ console.log('admin.js file loaded - v1.0.1');
             }
         });
 
-        console.log('=== initGeneralGuides finished ===');
     }
 
     function initGuideCategories() {
-        console.log('=== Guide Categories Init Start ===');
 
         // New category button
         $(document).on('click', '.helpdesk-btn-new-category', function() {
@@ -6452,11 +5853,9 @@ console.log('admin.js file loaded - v1.0.1');
             });
         });
 
-        console.log('=== Guide Categories Init End ===');
     }
 
     function initGuideLinks() {
-        console.log('=== Guide Links Init Start ===');
 
         // New link button
         $(document).on('click', '.helpdesk-btn-new-link', function() {
@@ -6576,9 +5975,9 @@ console.log('admin.js file loaded - v1.0.1');
             });
         });
 
-        console.log('=== Guide Links Init End ===');
     }
 
 })(jQuery);
+
 
 

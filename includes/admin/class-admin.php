@@ -387,7 +387,7 @@ class Admin {
      * Render dashboard
      */
     public function render_dashboard() {
-        require_once HELPDESK_PLUGIN_DIR . 'includes/views/admin-dashboard.php';
+        require_once HELPDESK_PLUGIN_DIR . 'includes/admin/dashboard.php';
     }
 
     /**

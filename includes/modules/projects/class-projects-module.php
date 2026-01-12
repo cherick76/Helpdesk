@@ -47,7 +47,7 @@ class ProjectsModule extends BaseModule {
      * Handle save project AJAX
      */
     public function handle_save_project() {
-        if ( ! Security::verify_ajax_request() ) {
+        if ( ! Security::verify_ajax_request( '_ajax_nonce' ) ) {
             return;
         }
 
@@ -184,7 +184,7 @@ class ProjectsModule extends BaseModule {
      * Handle delete project AJAX
      */
     public function handle_delete_project() {
-        if ( ! Security::verify_ajax_request() ) {
+        if ( ! Security::verify_ajax_request( '_ajax_nonce' ) ) {
             return;
         }
 
@@ -211,7 +211,7 @@ class ProjectsModule extends BaseModule {
      * Handle get project AJAX
      */
     public function handle_get_project() {
-        if ( ! Security::verify_ajax_request() ) {
+        if ( ! Security::verify_ajax_request( '_ajax_nonce' ) ) {
             return;
         }
 
@@ -244,7 +244,7 @@ class ProjectsModule extends BaseModule {
      * Handle get projects AJAX
      */
     public function handle_get_projects() {
-        if ( ! Security::verify_ajax_request() ) {
+        if ( ! Security::verify_ajax_request( '_ajax_nonce' ) ) {
             return;
         }
 
@@ -260,9 +260,9 @@ class ProjectsModule extends BaseModule {
         // Build query with filter
         $sql = "SELECT * FROM {$table}";
 
-        // Apply -nw filter if needed
+        // Apply -nw filter if needed (filter by nazov field, not zakaznicke_cislo)
         if ( ! $show_nw_projects ) {
-            $sql .= " WHERE zakaznicke_cislo NOT LIKE %s";
+            $sql .= " WHERE nazov NOT LIKE %s";
             $projects = $wpdb->get_results(
                 $wpdb->prepare( $sql, '%-nw%' ),
                 ARRAY_A
@@ -278,7 +278,7 @@ class ProjectsModule extends BaseModule {
      * Handle get all projects with employees AJAX
      */
     public function handle_get_all_projects_with_employees() {
-        if ( ! Security::verify_ajax_request() ) {
+        if ( ! Security::verify_ajax_request( '_ajax_nonce' ) ) {
             return;
         }
 
@@ -322,7 +322,7 @@ class ProjectsModule extends BaseModule {
      * Handle add employee to project AJAX
      */
     public function handle_add_employee() {
-        if ( ! Security::verify_ajax_request() ) {
+        if ( ! Security::verify_ajax_request( '_ajax_nonce' ) ) {
             return;
         }
 
@@ -352,7 +352,7 @@ class ProjectsModule extends BaseModule {
      * Handle remove employee from project AJAX
      */
     public function handle_remove_employee() {
-        if ( ! Security::verify_ajax_request() ) {
+        if ( ! Security::verify_ajax_request( '_ajax_nonce' ) ) {
             return;
         }
 
@@ -488,7 +488,7 @@ class ProjectsModule extends BaseModule {
      * Handle export projects to CSV
      */
     public function handle_export_projects() {
-        if ( ! Security::verify_ajax_request() ) {
+        if ( ! Security::verify_ajax_request( '_ajax_nonce' ) ) {
             return;
         }
 
@@ -525,7 +525,7 @@ class ProjectsModule extends BaseModule {
      * Handle import projects from CSV
      */
     public function handle_import_projects() {
-        if ( ! Security::verify_ajax_request() ) {
+        if ( ! Security::verify_ajax_request( '_ajax_nonce' ) ) {
             return;
         }
 
@@ -675,19 +675,18 @@ class ProjectsModule extends BaseModule {
         $like = '%' . $wpdb->esc_like( $search_term ) . '%';
         $today = current_time( 'Y-m-d' );
 
-        // Build query with filter
-        $sql = "SELECT * FROM {$table} WHERE zakaznicke_cislo LIKE %s";
-        $sql_params = array( $like );
+        // Build query with filter - search in both zakaznicke_cislo and nazov
+        $sql = "SELECT * FROM {$table} WHERE (zakaznicke_cislo LIKE %s OR nazov LIKE %s)";
+        $sql_params = array( $like, $like );
 
-        // Apply -nw filter if needed
+        // Apply -nw filter if needed (only for old data with dash in zakaznicke_cislo)
         if ( ! $show_nw_projects ) {
-            $sql .= " AND zakaznicke_cislo NOT LIKE %s";
-            $sql_params[] = '%-nw%';
+            // No need to filter by "-nw" anymore since we split the fields
         }
 
         $sql .= " ORDER BY zakaznicke_cislo ASC LIMIT 20";
 
-        // Search v zakaznicke_cislo
+        // Search in zakaznicke_cislo and nazov
         $projects = $wpdb->get_results(
             $wpdb->prepare( $sql, $sql_params ),
             ARRAY_A
@@ -697,12 +696,14 @@ class ProjectsModule extends BaseModule {
         if ( $projects ) {
             foreach ( $projects as &$project ) {
                 // Get project employees (from project_employee table)
-                $project_employees_sql = "SELECT e.id, e.meno_priezvisko, e.klapka, e.mobil, e.poznamka, e.pozicia_id, 0 as pozicia_nazov, MAX(CASE WHEN v.nepritomnost_od <= %s AND v.nepritomnost_do >= %s THEN v.nepritomnost_od END) as nepritomnost_od, MAX(CASE WHEN v.nepritomnost_od <= %s AND v.nepritomnost_do >= %s THEN v.nepritomnost_do END) as nepritomnost_do, pp.is_hlavny, 'project' as emp_type
+                $project_employees_sql = "SELECT e.id, e.meno_priezvisko, e.klapka, e.mobil, e.poznamka, e.pozicia_id, COALESCE(p.skratka, p.profesia, '') as pozicia_nazov, MAX(CASE WHEN v.nepritomnost_od <= %s AND v.nepritomnost_do >= %s THEN v.nepritomnost_od END) as nepritomnost_od, MAX(CASE WHEN v.nepritomnost_od <= %s AND v.nepritomnost_do >= %s THEN v.nepritomnost_do END) as nepritomnost_do, pp.is_hlavny, 'project' as emp_type, MAX(CASE WHEN s.id IS NOT NULL AND s.pohotovost_od <= %s AND s.pohotovost_do >= %s THEN 1 ELSE 0 END) as has_standby, GROUP_CONCAT(DISTINCT CASE WHEN s.id IS NOT NULL AND s.pohotovost_od <= %s AND s.pohotovost_do >= %s THEN s.zdroj END) as zdroj
                          FROM {$employees_table} e
                          INNER JOIN `{$project_employee_table}` pp ON e.id = pp.pracovnik_id
-                         LEFT JOIN {$vacations_table} v ON e.id = v.pracovnik_id
+                         LEFT JOIN {$vacations_table} v ON e.id = v.pracovnik_id AND v.nepritomnost_od <= %s AND v.nepritomnost_do >= %s
+                         LEFT JOIN {$standby_table} s ON e.id = s.pracovnik_id AND s.je_aktivna = 1 AND s.projekt_id = %d
+                         LEFT JOIN {$positions_table} p ON e.pozicia_id = p.id
                          WHERE pp.projekt_id = %d
-                         GROUP BY e.id
+                         GROUP BY e.id, e.meno_priezvisko, e.klapka, e.mobil, e.poznamka, e.pozicia_id, pp.is_hlavny, p.skratka, p.profesia
                          ORDER BY pp.is_hlavny DESC, e.meno_priezvisko ASC";
                 
                 $project_employees = $wpdb->get_results(
@@ -712,17 +713,26 @@ class ProjectsModule extends BaseModule {
                         $today,
                         $today,
                         $today,
+                        $today,
+                        $today,
+                        $today,
+                        $today,
+                        $today,
+                        $today,
+                        $project['id'],
                         $project['id']
                     ),
                     ARRAY_A
                 );
+                
+                error_log( 'DEBUG project_employees for project ' . $project['id'] . ': ' . json_encode( $project_employees ) );
 
                 // Get standby employees (from standby table) - only those with active standby
                 // Use subquery to get only the LATEST standby record for each employee
-                $standby_employees_sql = "SELECT e.id, e.meno_priezvisko, e.klapka, e.mobil, e.poznamka, e.pozicia_id, 0 as pozicia_nazov, MAX(CASE WHEN v.nepritomnost_od <= %s AND v.nepritomnost_do >= %s THEN v.nepritomnost_od END) as nepritomnost_od, MAX(CASE WHEN v.nepritomnost_od <= %s AND v.nepritomnost_do >= %s THEN v.nepritomnost_do END) as nepritomnost_do, 0 as is_hlavny, 'standby' as emp_type, MAX(s.pohotovost_od) as pohotovost_od, MAX(s.pohotovost_do) as pohotovost_do
+                $standby_employees_sql = "SELECT e.id, e.meno_priezvisko, e.klapka, e.mobil, e.poznamka, e.pozicia_id, COALESCE(p.skratka, p.profesia, '') as pozicia_nazov, MAX(CASE WHEN v.nepritomnost_od <= %s AND v.nepritomnost_do >= %s THEN v.nepritomnost_od END) as nepritomnost_od, MAX(CASE WHEN v.nepritomnost_od <= %s AND v.nepritomnost_do >= %s THEN v.nepritomnost_do END) as nepritomnost_do, 0 as is_hlavny, 'standby' as emp_type, MAX(s.pohotovost_od) as pohotovost_od, MAX(s.pohotovost_do) as pohotovost_do, GROUP_CONCAT(DISTINCT s.zdroj) as zdroj, 1 as has_standby
                          FROM {$employees_table} e
                          INNER JOIN (
-                            SELECT pracovnik_id, projekt_id, pohotovost_od, pohotovost_do, je_aktivna
+                            SELECT pracovnik_id, projekt_id, pohotovost_od, pohotovost_do, je_aktivna, zdroj
                             FROM {$standby_table}
                             WHERE id IN (
                                SELECT MAX(id) 
@@ -731,8 +741,9 @@ class ProjectsModule extends BaseModule {
                                GROUP BY pracovnik_id
                             )
                          ) s ON e.id = s.pracovnik_id AND s.projekt_id = %d
-                         LEFT JOIN {$vacations_table} v ON e.id = v.pracovnik_id
-                         GROUP BY e.id
+                         LEFT JOIN {$vacations_table} v ON e.id = v.pracovnik_id AND v.nepritomnost_od <= %s AND v.nepritomnost_do >= %s
+                         LEFT JOIN {$positions_table} p ON e.pozicia_id = p.id
+                         GROUP BY e.id, e.meno_priezvisko, e.klapka, e.mobil, e.poznamka, e.pozicia_id, p.skratka, p.profesia
                          ORDER BY e.meno_priezvisko ASC";
                 
                 $standby_employees = $wpdb->get_results(
@@ -743,21 +754,40 @@ class ProjectsModule extends BaseModule {
                         $today,
                         $today,
                         $project['id'],
-                        $project['id']
+                        $project['id'],
+                        $today,
+                        $today
                     ),
                     ARRAY_A
                 );
 
-                // Merge employees - project employees first, then add standby employees that are not already in project
+                // Keep project and standby employees separate - do NOT merge them
                 $all_employees = $project_employees ? $project_employees : array();
-                if ( $standby_employees ) {
-                    $project_emp_ids = wp_list_pluck( $project_employees ? $project_employees : array(), 'id' );
-                    foreach ( $standby_employees as $standby_emp ) {
-                        if ( ! in_array( $standby_emp['id'], $project_emp_ids, true ) ) {
-                            $all_employees[] = $standby_emp;
+                
+                // Assign project employees to response
+                $project['employees'] = $all_employees;
+                
+                // Get IDs of employees already in project
+                $project_employee_ids = array();
+                if ( ! empty( $project_employees ) ) {
+                    foreach ( $project_employees as $emp ) {
+                        $project_employee_ids[] = $emp['id'];
+                    }
+                }
+                
+                // Filter standby employees - remove those already in project
+                $filtered_standby = array();
+                if ( ! empty( $standby_employees ) ) {
+                    foreach ( $standby_employees as $emp ) {
+                        if ( ! in_array( $emp['id'], $project_employee_ids ) ) {
+                            $filtered_standby[] = $emp;
                         }
                     }
                 }
+                
+                // Store standby separately for display - they should appear as their own section, not merged with project employees
+                // Only include standby employees that are NOT already assigned to the project
+                $project['standby_employees'] = ! empty( $filtered_standby ) ? $filtered_standby : array();
 
                 // Detektuj rozdiely v diacritike
                 $diacritics_warnings = array();
@@ -803,6 +833,7 @@ class ProjectsModule extends BaseModule {
         }
 
         // Return escaped response
+        error_log( 'DEBUG search_projects: ' . json_encode( array_slice( $projects ? $projects : array(), 0, 1 ) ) );
         wp_send_json_success( array( 'projects' => \HelpDesk\Utils\Security::escape_response( $projects ? $projects : array() ) ) );
     }
 

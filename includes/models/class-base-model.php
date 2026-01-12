@@ -57,12 +57,27 @@ abstract class BaseModel {
     }
 
     /**
-     * Get all records
+     * Get all records (with caching support)
      */
     public static function get_all( $args = array() ) {
         global $wpdb;
         $instance = new static();
         $table = $instance->get_table();
+
+        // Skip cache if searching or using pagination
+        $use_cache = empty( $args['search'] ) && empty( $args['offset'] ) && empty( $args['limit'] );
+
+        // Generate cache key
+        if ( $use_cache ) {
+            $class_name = explode( '\\', get_class( $instance ) );
+            $class_name = strtolower( end( $class_name ) );
+            $cache_key = 'model_' . $class_name . '_all_' . wp_hash( json_encode( $args ) );
+            $cached = get_transient( 'helpdesk_cache_' . $cache_key );
+
+            if ( $cached !== false ) {
+                return $cached;
+            }
+        }
 
         $query = "SELECT * FROM " . $table;
 
@@ -83,7 +98,14 @@ abstract class BaseModel {
             $query .= $wpdb->prepare( " OFFSET %d", $args['offset'] );
         }
 
-        return $wpdb->get_results( $query, ARRAY_A );
+        $result = $wpdb->get_results( $query, ARRAY_A );
+
+        // Cache result (5 minutes = 300 seconds)
+        if ( $use_cache ) {
+            set_transient( 'helpdesk_cache_' . $cache_key, $result, 300 );
+        }
+
+        return $result;
     }
 
     /**
@@ -124,10 +146,34 @@ abstract class BaseModel {
         }
 
         global $wpdb;
-        return $wpdb->delete(
+        $result = $wpdb->delete(
             $this->table,
             array( 'id' => $this->get( 'id' ) ),
             array( '%d' )
+        );
+
+        // Invalidate cache
+        if ( $result ) {
+            $this->invalidate_cache();
+        }
+
+        return $result;
+    }
+
+    /**
+     * Invalidate cache for this model type
+     */
+    protected function invalidate_cache() {
+        global $wpdb;
+        $class_name = explode( '\\', get_class( $this ) );
+        $model_name = strtolower( end( $class_name ) );
+        $prefix = $wpdb->esc_like( 'helpdesk_cache_model_' . $model_name );
+
+        $wpdb->query(
+            $wpdb->prepare(
+                "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+                '%transient_' . $prefix . '%'
+            )
         );
     }
 }

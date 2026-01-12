@@ -131,19 +131,19 @@ if ( ! current_user_can( 'manage_helpdesk' ) ) {
 
         .search-filters select,
         .search-filters input {
-            padding: 10px;
+            padding: 8px 12px;
             border: 1px solid #ddd;
             border-radius: 4px;
-            font-size: 13px;
+            font-size: 12px;
         }
 
         .search-button {
-            padding: 12px 30px;
+            padding: 8px 16px;
             background: #0073aa;
             color: white;
             border: none;
             border-radius: 4px;
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 600;
             cursor: pointer;
             transition: background 0.3s;
@@ -426,7 +426,7 @@ if ( ! current_user_can( 'manage_helpdesk' ) ) {
     <!-- PROJECTS TAB -->
     <div id="projects" class="tab-content active">
         <div class="search-section">
-            <h2>Vyhľadávanie Projektov a Pracovníkov</h2>
+            <h2>Vyhľadávanie Projektov</h2>
             
             <div class="search-input-group">
                 <input 
@@ -435,7 +435,7 @@ if ( ! current_user_can( 'manage_helpdesk' ) ) {
                     placeholder="Zadajte názov projektu, číslo alebo meno pracovníka..." 
                     autocomplete="off"
                 />
-                <button class="search-button" id="project-search-button" onclick="searchProjects()">
+                <button class="search-button" id="project-search-button">
                     Hľadať Projekty
                 </button>
             </div>
@@ -445,7 +445,7 @@ if ( ! current_user_can( 'manage_helpdesk' ) ) {
         </div>
 
         <div id="project-results" class="results-section">
-            <div class="results-header">
+            <div class="results-header" style="display: none;">
                 <h3>Výsledky Vyhľadávania Projektov</h3>
                 <span class="results-count">Nájdené: <strong id="project-count">0</strong></span>
             </div>
@@ -511,6 +511,16 @@ if ( ! current_user_can( 'manage_helpdesk' ) ) {
 
     const nonce = <?php echo json_encode( wp_create_nonce( 'helpdesk-nonce' ) ); ?>;
     const ajaxurl = <?php echo json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
+    
+    // Dashboard display settings
+    const dashboardDisplay = <?php echo json_encode( get_option( 'helpdesk_dashboard_display', array(
+        'nazov_projektu' => true,
+        'klapka' => true,
+        'mobil' => true,
+        'pozicia' => true,
+        'poznamka_pracovnika' => true,
+        'hd_kontakt' => true,
+    ) ) ); ?>;
 
     // Tab switching
     document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -530,10 +540,12 @@ if ( ! current_user_can( 'manage_helpdesk' ) ) {
 
     // PROJECTS SEARCH
     window.searchProjects = function() {
+        console.log('🔍 searchProjects() called');
         const searchTerm = document.getElementById('project-search-input').value.trim();
+        console.log('Search term:', searchTerm);
         
         if (!searchTerm) {
-            showError('project', 'Prosím zadajte hľadaný termín');
+            displayProjects([]);
             return;
         }
 
@@ -542,19 +554,30 @@ if ( ! current_user_can( 'manage_helpdesk' ) ) {
         button.disabled = true;
         button.innerHTML = 'Hľadám... <span class="loading-spinner"></span>';
 
+        console.log('📤 Sending fetch to:', ajaxurl);
+        console.log('📦 Nonce:', nonce);
+        console.log('🔍 Search term:', searchTerm);
+        
+        const postData = new URLSearchParams({
+            action: 'helpdesk_search_projects',
+            search: searchTerm,
+            _wpnonce: nonce
+        });
+        console.log('📋 POST data:', postData.toString());
+
         fetch(ajaxurl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: new URLSearchParams({
-                action: 'helpdesk_search_projects',
-                search: searchTerm,
-                _wpnonce: nonce
-            })
+            body: postData
         })
-        .then(response => response.json())
+        .then(response => {
+            console.log('📥 Response status:', response.status);
+            return response.json();
+        })
         .then(data => {
+            console.log('📊 Projects data:', data);
             if (data.success) {
                 displayProjects(data.data.projects || []);
             } else {
@@ -597,59 +620,154 @@ if ( ! current_user_can( 'manage_helpdesk' ) ) {
 
     window.createProjectCard = function(project) {
         const employees = project.employees || [];
-        const mainEmployees = employees.filter(e => e.is_hlavny == 1 || e.emp_type === 'project');
-        const standbyEmployees = employees.filter(e => e.emp_type === 'standby');
-
-        let employeesHtml = '';
+        const standbyEmployees = project.standby_employees || [];
         
-        mainEmployees.forEach(emp => {
-            employeesHtml += `
-                <li class="employee-item">
-                    <div class="employee-name">
-                        ${escapeHtml(emp.meno_priezvisko)}
-                        <span class="employee-badge badge-main">Hlavný</span>
+        // Pracovníci z excelu (pridelení)
+        const excelEmployees = employees.filter(e => e.emp_type === 'project');
+        // Pracovníci z pohotovosti
+        const standbyOnly = standbyEmployees.filter(e => e.emp_type === 'standby');
+
+        let excelHtml = '';
+        let standbyHtml = '';
+        
+        // Pracovníci z excelu
+        excelEmployees.forEach(emp => {
+            const isMain = emp.is_hlavny == 1;
+            
+            // Check vacation - use string comparison for dates in YYYY-MM-DD format
+            let isOnVacation = false;
+            if (emp.nepritomnost_od && emp.nepritomnost_do) {
+                const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+                isOnVacation = today >= emp.nepritomnost_od && today <= emp.nepritomnost_do;
+            }
+            
+            const hasStandby = emp.has_standby == 1;
+            
+            // Get beacon if has standby
+            let beaconEmoji = '';
+            let beaconTitle = '';
+            if (hasStandby && emp.zdroj) {
+                const hasMPorAG = emp.zdroj.includes('MP') || emp.zdroj.includes('AG');
+                const hasIS = emp.zdroj.includes('IS');
+                
+                if (hasMPorAG && hasIS) {
+                    // Both sources - split red and blue
+                    beaconEmoji = '<span style="display:inline-block;width:12px;height:12px;background:linear-gradient(to right, #f44336 50%, #2196F3 50%);border-radius:50%;margin-right:4px;vertical-align:text-bottom;"></span>';
+                    beaconTitle = 'Viaceré zdroje (importované + manuálne/automaticky)';
+                } else if (hasMPorAG) {
+                    beaconEmoji = '🔵 '; // Blue circle for manually added or auto generated
+                    beaconTitle = 'Manuálne pridané alebo automaticky generované';
+                } else if (hasIS) {
+                    beaconEmoji = '🔴 '; // Red circle for imported
+                    beaconTitle = 'Importované zo súboru';
+                }
+            }
+            
+            let displayStyle = 'font-size: 12px; padding: 6px 0;';
+            let nameDisplay = (isMain ? '⭐ ' : '') + escapeHtml(emp.meno_priezvisko);
+            let beaconStyle = '';
+            
+            if (isOnVacation) {
+                displayStyle += ' text-decoration: line-through; color: #999;';
+                beaconStyle = ' opacity: 0.5;';
+                nameDisplay = '🏖️ ' + nameDisplay;
+            }
+            
+            if (isMain && hasStandby) {
+                displayStyle += ' font-weight: bold;';
+            }
+            
+            let contactInfo = '';
+            if (emp.klapka) contactInfo += '📞 ' + escapeHtml(emp.klapka);
+            if (emp.mobil) contactInfo += ' | 📱 ' + escapeHtml(emp.mobil);
+            if (emp.pozicia_nazov) contactInfo += ' | ' + escapeHtml(emp.pozicia_nazov);
+            
+            excelHtml += `
+                <div style="${displayStyle}">
+                    <div title="${beaconTitle}" style="${beaconStyle}">${beaconEmoji}${nameDisplay}</div>
+                    ${contactInfo ? '<div style="font-size: 11px; color: #666;">' + contactInfo + '</div>' : ''}
+                </div>
+            `;
+        });
+        
+        // Pracovníci z pohotovosti
+        standbyOnly.forEach(emp => {
+            // Check vacation - use string comparison for dates in YYYY-MM-DD format
+            let isOnVacation = false;
+            if (emp.nepritomnost_od && emp.nepritomnost_do) {
+                const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+                isOnVacation = today >= emp.nepritomnost_od && today <= emp.nepritomnost_do;
+            }
+            
+            // Determine beacon icon based on source (zdroj)
+            let beaconEmoji = '🔴'; // Default red
+            let beaconTitle = '';
+            if (emp.zdroj) {
+                const hasMPorAG = emp.zdroj.includes('MP') || emp.zdroj.includes('AG');
+                const hasIS = emp.zdroj.includes('IS');
+                
+                if (hasMPorAG && hasIS) {
+                    // Both sources - split red and blue
+                    beaconEmoji = '<span style="display:inline-block;width:12px;height:12px;background:linear-gradient(to right, #f44336 50%, #2196F3 50%);border-radius:50%;margin-right:4px;vertical-align:text-bottom;"></span>';
+                    beaconTitle = 'Viaceré zdroje (importované + manuálne/automaticky)';
+                } else if (hasMPorAG) {
+                    beaconEmoji = '🔵'; // Blue circle for manually added or auto generated
+                    beaconTitle = 'Manuálne pridané alebo automaticky generované';
+                } else if (hasIS) {
+                    beaconEmoji = '🔴'; // Red circle for imported
+                    beaconTitle = 'Importované zo súboru';
+                }
+            }
+            
+            let displayStyle = 'font-size: 12px; padding: 6px 0;';
+            let nameDisplay = escapeHtml(emp.meno_priezvisko);
+            let beaconStyle = '';
+            
+            if (isOnVacation) {
+                displayStyle += ' text-decoration: line-through; color: #999;';
+                beaconStyle = ' opacity: 0.5;';
+                nameDisplay = '🏖️ ' + nameDisplay;
+            }
+            
+            let contactInfo = '';
+            if (emp.klapka) contactInfo += '📞 ' + escapeHtml(emp.klapka);
+            if (emp.mobil) contactInfo += ' | 📱 ' + escapeHtml(emp.mobil);
+            if (emp.pozicia_nazov) contactInfo += ' | ' + escapeHtml(emp.pozicia_nazov);
+            
+            standbyHtml += `
+                <div style="${displayStyle}">
+                    <div title="${beaconTitle}" style="${beaconStyle}">
+                        ${typeof beaconEmoji === 'string' && beaconEmoji.startsWith('<span') ? beaconEmoji : escapeHtml(beaconEmoji)} ${nameDisplay}
                     </div>
-                    <div class="employee-details">
-                        ${emp.klapka ? '📞 ' + escapeHtml(emp.klapka) : ''}
-                        ${emp.mobil ? ' | 📱 ' + escapeHtml(emp.mobil) : ''}
-                    </div>
-                </li>
+                    ${contactInfo ? '<div style="font-size: 11px; color: #666;">' + contactInfo + '</div>' : ''}
+                </div>
             `;
         });
 
-        standbyEmployees.forEach(emp => {
-            employeesHtml += `
-                <li class="employee-item">
-                    <div class="employee-name">
-                        ${escapeHtml(emp.meno_priezvisko)}
-                        <span class="employee-badge badge-standby">Zástupca</span>
-                    </div>
-                    <div class="employee-details">
-                        ${emp.klapka ? '📞 ' + escapeHtml(emp.klapka) : ''}
-                        ${emp.mobil ? ' | 📱 ' + escapeHtml(emp.mobil) : ''}
-                    </div>
-                </li>
-            `;
-        });
-
-        if (!employeesHtml) {
-            employeesHtml = '<li class="employee-item" style="color: #999;">Žiadni pracovníci nie sú pridelení</li>';
-        }
+        const excelSection = excelHtml ? `
+            <div style="flex: 1; padding-right: 10px;">
+                <div style="font-weight: 600; margin-bottom: 8px; font-size: 12px;">Z Excelu</div>
+                ${excelHtml}
+            </div>
+        ` : '';
+        
+        const standbySection = standbyHtml ? `
+            <div style="flex: 1;">
+                <div style="font-weight: 600; margin-bottom: 8px; font-size: 12px;">Pohotovosť</div>
+                ${standbyHtml}
+            </div>
+        ` : '';
 
         return `
             <div class="result-card">
                 <div class="card-header">
-                    <h4 class="card-title">${escapeHtml(project.nazov || 'Bez názvu')}</h4>
-                    <div class="card-meta">
-                        <strong>Číslo:</strong> ${escapeHtml(project.zakaznicke_cislo || 'N/A')}
-                    </div>
-                    ${project.poznamka ? '<div class="card-meta"><strong>Poznámka:</strong> ' + escapeHtml(project.poznamka) + '</div>' : ''}
+                    ${dashboardDisplay.nazov_projektu ? '<h4 class="card-title">' + escapeHtml(project.zakaznicke_cislo || 'N/A') + ' - ' + escapeHtml(project.nazov || 'Bez názvu') + '</h4>' : '<h4 class="card-title">' + escapeHtml(project.zakaznicke_cislo || 'N/A') + '</h4>'}
+                    ${project.hd_kontakt ? '<div class="card-meta"><strong>📞 HD Kontakt:</strong> ' + escapeHtml(project.hd_kontakt) + '</div>' : ''}
+                    ${project.poznamka ? '<div class="card-meta"><strong>📝 Poznámka:</strong> ' + escapeHtml(project.poznamka) + '</div>' : ''}
                 </div>
-                <div class="employees-container">
-                    <div class="employees-title">👥 Pridelení pracovníci (${employees.length})</div>
-                    <ul class="employees-list">
-                        ${employeesHtml}
-                    </ul>
+                <div class="employees-container" style="display: flex; gap: 20px;">
+                    ${excelSection}
+                    ${standbySection}
                 </div>
             </div>
         `;
@@ -756,8 +874,20 @@ if ( ! current_user_can( 'manage_helpdesk' ) ) {
     };
 
     // Allow Enter key in search inputs
-    document.getElementById('project-search-input').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') searchProjects();
+    document.getElementById('project-search-input').addEventListener('keyup', function(e) {
+        // Dynamické vyhľadávanie pri každom keystroke (minimálne 2 znaky)
+        const searchTerm = this.value.trim();
+        if (searchTerm.length >= 2) {
+            searchProjects();
+        } else if (searchTerm.length === 0) {
+            // Vymaz výsledky keď je pole prázdne
+            displayProjects([]);
+        }
+    });
+    
+    document.getElementById('project-search-button').addEventListener('click', function(e) {
+        e.preventDefault();
+        searchProjects();
     });
 
     document.getElementById('solution-search-input').addEventListener('keypress', function(e) {

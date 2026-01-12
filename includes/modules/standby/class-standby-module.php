@@ -42,10 +42,12 @@ class StandbyModule extends BaseModule {
         add_action( 'wp_ajax_helpdesk_get_project_employees', array( $this, 'handle_get_project_employees' ) );
         add_action( 'wp_ajax_helpdesk_import_standby', array( $this, 'handle_import_standby' ) );
         add_action( 'wp_ajax_helpdesk_check_standby_duplicates', array( $this, 'handle_check_standby_duplicates' ) );
+        add_action( 'wp_ajax_helpdesk_delete_overlapping_standby', array( $this, 'handle_delete_overlapping_standby' ) );
         add_action( 'wp_ajax_helpdesk_remove_standby_duplicates', array( $this, 'handle_remove_standby_duplicates' ) );
         add_action( 'wp_ajax_helpdesk_delete_all_standby', array( $this, 'handle_delete_all_standby' ) );
         add_action( 'wp_ajax_helpdesk_update_employee_positions', array( $this, 'handle_update_employee_positions' ) );
         add_action( 'wp_ajax_helpdesk_delete_old_standby', array( $this, 'handle_delete_old_standby' ) );
+        add_action( 'wp_ajax_generate_standby_rotation', array( $this, 'handle_generate_standby_rotation' ) );
         
         // Setup cron job for automatic deletion
         add_action( 'helpdesk_delete_old_standby_cron', array( $this, 'delete_old_standby_records' ) );
@@ -87,10 +89,11 @@ class StandbyModule extends BaseModule {
                     'projekt_id' => $project_id,
                     'pohotovost_od' => $date_from,
                     'pohotovost_do' => $date_to,
+                    'zdroj' => 'MP',  // Manual edit
                     'updated_at' => current_time( 'mysql' ),
                 ),
                 array( 'id' => $id ),
-                array( '%d', '%d', '%s', '%s', '%s' ),
+                array( '%d', '%d', '%s', '%s', '%s', '%s' ),
                 array( '%d' )
             );
         } else {
@@ -117,9 +120,10 @@ class StandbyModule extends BaseModule {
                     'pohotovost_od' => $date_from,
                     'pohotovost_do' => $date_to,
                     'je_aktivna' => 1,
+                    'zdroj' => 'MP',  // Manually added
                     'created_at' => current_time( 'mysql' ),
                 ),
-                array( '%d', '%d', '%s', '%s', '%d', '%s' )
+                array( '%d', '%d', '%s', '%s', '%d', '%s', '%s' )
             );
             $id = $wpdb->insert_id;
             
@@ -201,6 +205,139 @@ class StandbyModule extends BaseModule {
     }
 
     /**
+     * Handle generate standby rotation
+     */
+    public function handle_generate_standby_rotation() {
+        if ( ! Security::verify_ajax_request( '_ajax_nonce', 'wp_rest' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Bezpečnostná chyba', HELPDESK_TEXT_DOMAIN ) ) );
+        }
+
+        // Get project IDs - can be single (backwards compat) or multiple as JSON
+        $project_ids = array();
+        
+        // Check for multiple project_ids as JSON array
+        if ( isset( $_POST['project_ids'] ) && ! empty( $_POST['project_ids'] ) ) {
+            $project_ids_raw = $_POST['project_ids'];
+            $decoded = json_decode( stripslashes( $project_ids_raw ), true );
+            if ( is_array( $decoded ) ) {
+                $project_ids = array_map( 'absint', $decoded );
+            }
+        } else {
+            // Fallback to single project_id for backwards compatibility
+            $project_id = Security::get_post_param( 'project_id', 0, 'intval' );
+            if ( $project_id > 0 ) {
+                $project_ids = array( $project_id );
+            }
+        }
+
+        $start_date = Security::get_post_param( 'start_date', '', 'sanitize_text_field' );
+        $end_date = Security::get_post_param( 'end_date', '', 'sanitize_text_field' );
+        $interval_type = Security::get_post_param( 'interval_type', 'weeks', 'sanitize_text_field' );
+        $work_interval = Security::get_post_param( 'work_interval', 1, 'intval' );
+        $free_interval = Security::get_post_param( 'free_interval', 1, 'intval' );
+        $employee_ids = Security::get_post_param( 'employee_ids', '', 'sanitize_text_field' );
+
+        // Validácia
+        if ( empty( $project_ids ) || ! $start_date || ! $end_date || ! $employee_ids ) {
+            wp_send_json_error( array( 'message' => __( 'Chýbajú povinné polia', HELPDESK_TEXT_DOMAIN ) ) );
+        }
+
+        // Parse employee IDs from comma-separated string
+        $selected_employees = array_filter( array_map( 'intval', explode( ',', $employee_ids ) ) );
+        
+        if ( empty( $selected_employees ) ) {
+            wp_send_json_error( array( 'message' => __( 'Žiadni pracovníci vybraní', HELPDESK_TEXT_DOMAIN ) ) );
+        }
+
+        // Konvertuj dátumy
+        $start = new \DateTime( $start_date );
+        $end = new \DateTime( $end_date );
+        $current = clone $start;
+
+        global $wpdb;
+        $standby_table = Database::get_standby_table();
+        $created_count = 0;
+        $employee_index = 0;
+        $total_employees = count( $selected_employees );
+
+        // Generuj pohotovosti s striedaním pre KAŽDÝ projekt
+        foreach ( $project_ids as $proj_id ) {
+            $current = clone $start;
+            $employee_index = 0;
+
+            while ( $current < $end ) {
+                // Aktuálny pracovník v pohotovosti
+                $current_employee_id = $selected_employees[ $employee_index ];
+                
+                // Kalkuluj koniec tejto pohotovosti
+                $work_start = clone $current;
+                
+                switch ( $interval_type ) {
+                    case 'days':
+                        $work_start->modify( "+{$work_interval} days" );
+                        break;
+                    case 'weeks':
+                        $work_start->modify( "+{$work_interval} weeks" );
+                        break;
+                    case 'months':
+                        $work_start->modify( "+{$work_interval} months" );
+                        break;
+                }
+
+                // Ak je koniec mimo rozsahu, skrátis ho
+                if ( $work_start > $end ) {
+                    $work_start = clone $end;
+                }
+
+                // Vlož standy záznám pre aktuálneho pracovníka a projekt
+                $wpdb->insert(
+                    $standby_table,
+                    array(
+                        'pracovnik_id' => $current_employee_id,
+                        'projekt_id' => $proj_id,
+                        'pohotovost_od' => $current->format( 'Y-m-d' ),
+                        'pohotovost_do' => $work_start->format( 'Y-m-d' ),
+                        'je_aktivna' => 1,
+                        'zdroj' => 'AG',  // Auto generated
+                        'created_at' => current_time( 'mysql' ),
+                    ),
+                    array( '%d', '%d', '%s', '%s', '%d', '%s', '%s' )
+                );
+
+                if ( $wpdb->insert_id ) {
+                    $created_count++;
+                }
+
+                // Posun na ďalšieho pracovníka
+                $employee_index = ( $employee_index + 1 ) % $total_employees;
+
+                // Posun čas o slobodné dni
+                $current = clone $work_start;
+                switch ( $interval_type ) {
+                    case 'days':
+                        $current->modify( "+{$free_interval} days" );
+                        break;
+                    case 'weeks':
+                        $current->modify( "+{$free_interval} weeks" );
+                        break;
+                    case 'months':
+                        $current->modify( "+{$free_interval} months" );
+                        break;
+                }
+            }
+        }
+
+        if ( $created_count > 0 ) {
+            wp_send_json_success( array(
+                'message' => sprintf( __( 'Vygenerované %d pohotovostí na %d projektoch', HELPDESK_TEXT_DOMAIN ), $created_count, count( $project_ids ) ),
+                'count' => $created_count,
+            ) );
+        } else {
+            wp_send_json_error( array( 'message' => __( 'Nepodarilo sa generovať pohotovosti', HELPDESK_TEXT_DOMAIN ) ) );
+        }
+    }
+
+    /**
      * Handle search standby periods
      */
     public function handle_search_standby() {
@@ -242,13 +379,29 @@ class StandbyModule extends BaseModule {
      * Get project employees for auto generation
      */
     public function handle_get_project_employees() {
-        if ( ! Security::verify_ajax_request( '_ajax_nonce' ) ) {
+        // Check if user has capability
+        if ( ! current_user_can( 'manage_helpdesk' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Nemáte oprávnenie', HELPDESK_TEXT_DOMAIN ) ), 403 );
             return;
         }
 
-        $project_id = Security::get_post_param( 'project_id', 0, 'intval' );
+        // Get project IDs - can be single or multiple
+        $ids_to_query = array();
+        
+        // Check for multiple project_ids as JSON array
+        if ( isset( $_POST['project_ids'] ) && ! empty( $_POST['project_ids'] ) ) {
+            $project_ids_raw = $_POST['project_ids'];
+            // Try to decode as JSON array
+            $decoded = json_decode( stripslashes( $project_ids_raw ), true );
+            if ( is_array( $decoded ) ) {
+                $ids_to_query = array_map( 'absint', $decoded );
+            }
+        } elseif ( isset( $_POST['project_id'] ) && ! empty( $_POST['project_id'] ) ) {
+            // Fallback to single project_id for backwards compatibility
+            $ids_to_query = array( absint( $_POST['project_id'] ) );
+        }
 
-        if ( ! $project_id ) {
+        if ( empty( $ids_to_query ) ) {
             wp_send_json_error( array( 'message' => __( 'Projekt nie je zadaný', HELPDESK_TEXT_DOMAIN ) ) );
         }
 
@@ -256,21 +409,21 @@ class StandbyModule extends BaseModule {
         $employees_table = Database::get_employees_table();
         $project_employees_table = Database::get_project_employee_table();
 
-        // Get all employees assigned to this project
+        // Build safe IN clause with absint'd IDs
+        $ids_safe = implode( ',', array_map( 'absint', $ids_to_query ) );
+
+        // Get all employees assigned to these projects (direct SQL to avoid prepare issues with IN clause)
         $employees = $wpdb->get_results(
-            $wpdb->prepare(
-                "SELECT DISTINCT e.id, e.meno_priezvisko, e.klapka
-                 FROM {$employees_table} e
-                 INNER JOIN {$project_employees_table} pe ON e.id = pe.pracovnik_id
-                 WHERE pe.projekt_id = %d
-                 ORDER BY pe.is_hlavny DESC, e.meno_priezvisko ASC",
-                $project_id
-            ),
+            "SELECT DISTINCT e.id, e.meno_priezvisko, e.klapka
+             FROM {$employees_table} e
+             INNER JOIN {$project_employees_table} pe ON e.id = pe.pracovnik_id
+             WHERE pe.projekt_id IN ({$ids_safe})
+             ORDER BY e.meno_priezvisko ASC",
             ARRAY_A
         );
 
         if ( empty( $employees ) ) {
-            wp_send_json_error( array( 'message' => __( 'Pre tento projekt nie sú priradení pracovníci', HELPDESK_TEXT_DOMAIN ) ) );
+            wp_send_json_error( array( 'message' => __( 'Pre vybrané projekty nie sú priradení pracovníci', HELPDESK_TEXT_DOMAIN ) ) );
         }
 
         wp_send_json_success( array( 'employees' => $employees ) );
@@ -280,8 +433,8 @@ class StandbyModule extends BaseModule {
      * Handle import standby from CSV
      */
     public function handle_import_standby() {
-        if ( ! Security::verify_ajax_request() ) {
-            return;
+        if ( ! Security::verify_ajax_request( '_ajax_nonce', 'wp_rest' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Bezpečnostná chyba', HELPDESK_TEXT_DOMAIN ) ) );
         }
 
         if ( ! isset( $_FILES['csv_file'] ) ) {
@@ -421,10 +574,19 @@ class StandbyModule extends BaseModule {
             // NOTE: Position assignment is SKIPPED in import step
             // Use "Update Positions" button after import to assign/update positions
             
-            // Find project
+            // Find project - extract 4-digit number from zakaznicke_cislo if it contains dash
+            // Example: "0022-CRSR NTA" -> search by "0022"
             $project_id = 0;
             if ( ! empty( $zakaznicke_cislo ) ) {
-                $project = $this->find_project_by_zakaznicke_cislo( $zakaznicke_cislo );
+                $cislo_for_search = $zakaznicke_cislo;
+                
+                // If zakaznicke_cislo contains a dash, extract the first part (the number)
+                if ( strpos( $zakaznicke_cislo, '-' ) !== false ) {
+                    $parts = explode( '-', $zakaznicke_cislo );
+                    $cislo_for_search = trim( $parts[0] );
+                }
+                
+                $project = $this->find_project_by_zakaznicke_cislo( $cislo_for_search );
                 if ( $project ) {
                     $project_id = $project->get( 'id' );
                 }
@@ -459,22 +621,14 @@ class StandbyModule extends BaseModule {
                 $employees_created++;
                 $errors[] = sprintf( __( 'Row %d: Employee "%s" created automatically with position ID %d', HELPDESK_TEXT_DOMAIN ), $row_number, $pracovnik_meno, $pozicia_id );
                 
-                // Assign newly created employee to project
-                global $wpdb;
-                $relation_table = Database::get_project_employee_table();
-                $wpdb->insert(
-                    $relation_table,
-                    array(
-                        'projekt_id' => $project_id,
-                        'pracovnik_id' => $employee_id,
-                        'is_hlavny' => 0,
-                    ),
-                    array( '%d', '%d', '%d' )
-                );
+                // NOTE: Do NOT assign newly created employee to project
+                // Employees imported for standby should NOT be regular project members
+                // They are only standby, not regular workers
             } else {
-                // Existing employee - just assign to project
+                // Existing employee
                 $employee_id = $employee->get( 'id' );
-                $employee->assign_to_project( $project_id );
+                // NOTE: Do NOT assign existing employee to project if importing standby
+                // Standby employees should not become regular project members
             }
 
             // Parse dates - format: "5.1.2026 0:00"
@@ -495,20 +649,24 @@ class StandbyModule extends BaseModule {
             global $wpdb;
             $table = Database::get_standby_table();
             
-            // Check for duplicates before insert
+            // Check for overlapping standby periods before insert
+            // A period is considered overlapping if:
+            // - Same employee, same project
+            // - Import period (od-do) overlaps with any existing period
+            // This prevents duplicate standby assignments even if generated and imported periods don't match exactly
             $check_sql = $wpdb->prepare(
                 "SELECT id FROM " . $table . " 
                  WHERE pracovnik_id = %d AND projekt_id = %d 
-                 AND pohotovost_od = %s AND pohotovost_do = %s",
+                 AND pohotovost_od <= %s AND pohotovost_do >= %s",
                 $employee_id,
                 $project_id,
-                $od_date,
-                $do_date
+                $do_date,      // Import end date
+                $od_date       // Import start date (check if existing covers this)
             );
             $existing = $wpdb->get_var( $check_sql );
 
             if ( $existing ) {
-                $errors[] = sprintf( __( 'Row %d: Standby period already exists', HELPDESK_TEXT_DOMAIN ), $row_number );
+                $errors[] = sprintf( __( 'Row %d: Standby period overlaps with existing period (duplicate)', HELPDESK_TEXT_DOMAIN ), $row_number );
                 continue;
             }
             
@@ -520,8 +678,9 @@ class StandbyModule extends BaseModule {
                     'pohotovost_od' => $od_date,
                     'pohotovost_do' => $do_date,
                     'je_aktivna' => 1,
+                    'zdroj' => 'IS',  // Imported from file
                 ),
-                array( '%d', '%d', '%s', '%s', '%d' )
+                array( '%d', '%d', '%s', '%s', '%d', '%s' )
             );
 
             if ( $result ) {
@@ -734,46 +893,125 @@ class StandbyModule extends BaseModule {
         global $wpdb;
         $standby_table = Database::get_standby_table();
 
-        // Find exact duplicate records
-        $duplicates = $wpdb->get_results(
-            "SELECT pracovnik_id, projekt_id, pohotovost_od, pohotovost_do, COUNT(*) as count
-             FROM {$standby_table}
-             GROUP BY pracovnik_id, projekt_id, pohotovost_od, pohotovost_do
-             HAVING COUNT(*) > 1
-             ORDER BY count DESC"
+        // Find FULLY NESTED standby periods (not just overlapping)
+        // A period is considered fully nested if it's completely contained within another period
+        // Example: 23.1-23.1 is nested in 22.1-25.1, but 23.1-24.1 is NOT nested in 22.1-23.1
+        $fully_nested_groups = array();
+        
+        // Get all standby records
+        $all_standby = $wpdb->get_results(
+            "SELECT id, pracovnik_id, projekt_id, pohotovost_od, pohotovost_do 
+             FROM {$standby_table} 
+             ORDER BY pracovnik_id, projekt_id, pohotovost_od"
         );
 
-        // Find all IDs for duplicate groups
-        $duplicate_details = array();
-        if ( ! empty( $duplicates ) ) {
-            foreach ( $duplicates as $dup ) {
-                $ids = $wpdb->get_col(
-                    $wpdb->prepare(
-                        "SELECT id FROM {$standby_table}
-                         WHERE pracovnik_id = %d AND projekt_id = %d 
-                         AND pohotovost_od = %s AND pohotovost_do = %s",
-                        $dup->pracovnik_id,
-                        $dup->projekt_id,
-                        $dup->pohotovost_od,
-                        $dup->pohotovost_do
-                    )
-                );
+        // Find fully nested periods for the same employee and project
+        foreach ( $all_standby as $standby ) {
+            // Find periods that COMPLETELY CONTAIN this one
+            // (existing.start <= this.start AND existing.end >= this.end AND existing is different)
+            $containers = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT id, pohotovost_od, pohotovost_do 
+                     FROM {$standby_table}
+                     WHERE pracovnik_id = %d AND projekt_id = %d 
+                     AND id != %d
+                     AND pohotovost_od <= %s AND pohotovost_do >= %s
+                     ORDER BY DATEDIFF(pohotovost_do, pohotovost_od) DESC",
+                    $standby->pracovnik_id,
+                    $standby->projekt_id,
+                    $standby->id,
+                    $standby->pohotovost_od,
+                    $standby->pohotovost_do
+                )
+            );
 
-                $duplicate_details[] = array(
-                    'pracovnik_id' => $dup->pracovnik_id,
-                    'projekt_id' => $dup->projekt_id,
-                    'pohotovost_od' => $dup->pohotovost_od,
-                    'pohotovost_do' => $dup->pohotovost_do,
-                    'count' => $dup->count,
-                    'ids' => $ids
-                );
+            // Only mark as nested if it's fully contained in a larger period
+            if ( ! empty( $containers ) ) {
+                $container = $containers[0]; // Get the largest containing period
+                
+                // Verify this is truly nested (not just partial overlap)
+                if ( strtotime( $container->pohotovost_od ) <= strtotime( $standby->pohotovost_od ) &&
+                     strtotime( $container->pohotovost_do ) >= strtotime( $standby->pohotovost_do ) ) {
+                    
+                    $group_key = $container->id;
+                    
+                    if ( ! isset( $fully_nested_groups[ $group_key ] ) ) {
+                        $fully_nested_groups[ $group_key ] = array(
+                            'container' => array(
+                                'id' => $container->id,
+                                'pracovnik_id' => $standby->pracovnik_id,
+                                'projekt_id' => $standby->projekt_id,
+                                'pohotovost_od' => $container->pohotovost_od,
+                                'pohotovost_do' => $container->pohotovost_do,
+                                'duration_days' => $this->calculate_days_difference( $container->pohotovost_od, $container->pohotovost_do ),
+                            ),
+                            'nested' => array()
+                        );
+                    }
+                    
+                    $fully_nested_groups[ $group_key ]['nested'][] = array(
+                        'id' => $standby->id,
+                        'pohotovost_od' => $standby->pohotovost_od,
+                        'pohotovost_do' => $standby->pohotovost_do,
+                        'duration_days' => $this->calculate_days_difference( $standby->pohotovost_od, $standby->pohotovost_do ),
+                    );
+                }
             }
         }
 
         wp_send_json_success( array(
-            'duplicate_count' => count( $duplicates ),
-            'duplicates' => $duplicate_details,
+            'nested_count' => count( $fully_nested_groups ),
+            'nested_groups' => array_values( $fully_nested_groups ),
             'total_standby' => $wpdb->get_var( "SELECT COUNT(*) FROM {$standby_table}" )
+        ) );
+    }
+
+    /**
+     * Calculate days difference between two dates
+     */
+    private function calculate_days_difference( $from, $to ) {
+        try {
+            $from_dt = new \DateTime( $from );
+            $to_dt = new \DateTime( $to );
+            $interval = $from_dt->diff( $to_dt );
+            return $interval->days + 1; // +1 to include both start and end day
+        } catch ( Exception $e ) {
+            return 0;
+        }
+    }
+
+    /**
+     * Delete overlapping standby periods
+     */
+    public function handle_delete_overlapping_standby() {
+        if ( ! Security::verify_ajax_request( '_ajax_nonce' ) ) {
+            return;
+        }
+
+        // Get the IDs to delete from POST
+        $ids_to_delete = isset( $_POST['ids'] ) ? array_map( 'intval', (array) $_POST['ids'] ) : array();
+        
+        if ( empty( $ids_to_delete ) ) {
+            wp_send_json_error( array( 'message' => __( 'Nie sú vybraté žiadne záznamy na vymazanie', HELPDESK_TEXT_DOMAIN ) ) );
+        }
+
+        global $wpdb;
+        $standby_table = Database::get_standby_table();
+        
+        // Delete selected records
+        $deleted = 0;
+        foreach ( $ids_to_delete as $id ) {
+            $result = $wpdb->query(
+                $wpdb->prepare( "DELETE FROM {$standby_table} WHERE id = %d", $id )
+            );
+            if ( $result ) {
+                $deleted++;
+            }
+        }
+
+        wp_send_json_success( array(
+            'deleted_count' => $deleted,
+            'message' => sprintf( __( 'Vymazaných %d prekrývajúcich sa pohotovostí', HELPDESK_TEXT_DOMAIN ), $deleted )
         ) );
     }
 
@@ -858,10 +1096,9 @@ class StandbyModule extends BaseModule {
             wp_send_json_error( array( 'message' => __( 'Insufficient permissions', HELPDESK_TEXT_DOMAIN ) ) );
         }
 
-        // Verify nonce (but be lenient if it's missing in development)
-        if ( ! isset( $_POST['_ajax_nonce'] ) || ! wp_verify_nonce( $_POST['_ajax_nonce'], 'helpdesk_nonce' ) ) {
-            // Log but don't fail completely - might be development environment
-            error_log( 'Nonce verification failed or missing in handle_update_employee_positions' );
+        // Verify nonce
+        if ( ! Security::verify_ajax_request( '_ajax_nonce', 'wp_rest' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Bezpečnostná chyba', HELPDESK_TEXT_DOMAIN ) ) );
         }
 
         // Check if file was uploaded

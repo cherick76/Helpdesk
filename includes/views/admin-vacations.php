@@ -54,6 +54,12 @@ $date_range_text = ( $min_date && $max_date ) ? "{$min_date} - {$max_date}, " : 
             <button class="button button-primary helpdesk-btn-import-vacations">
                 <?php echo esc_html__( '📥 Importovať nepritomnosti z CSV', HELPDESK_TEXT_DOMAIN ); ?>
             </button>
+            <button class="button helpdesk-btn-check-vacation-duplicates" style="color: #dc3545;">
+                <?php echo esc_html__( 'Skontrolovať duplikáty', HELPDESK_TEXT_DOMAIN ); ?>
+            </button>
+            <button class="button helpdesk-btn-delete-old-vacations" style="background-color: #fff3cd; color: #856404; border-color: #ffc107;">
+                <?php echo esc_html__( '🗑️ Vymazať staré nepritomnosti', HELPDESK_TEXT_DOMAIN ); ?>
+            </button>
         </div>
 
         <!-- Hidden file input for CSV import -->
@@ -380,5 +386,244 @@ $date_range_text = ( $min_date && $max_date ) ? "{$min_date} - {$max_date}, " : 
 .helpdesk-vacation-with-standby td {
     color: #666;
 }
+
+.helpdesk-duplicates-list {
+    margin-top: 15px;
+    padding: 12px;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+}
+
+.helpdesk-duplicates-list h3 {
+    margin-top: 0;
+    color: #856404;
+}
+
+.helpdesk-duplicate-item {
+    margin-bottom: 10px;
+    padding: 8px;
+    background: white;
+    border-radius: 3px;
+}
+
+.helpdesk-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.helpdesk-modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.helpdesk-spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.helpdesk-result-item {
+    margin: 10px 0;
+    padding: 8px;
+    background: #f9f9f9;
+    border-left: 3px solid #0073aa;
+}
+
+.helpdesk-result-item.success {
+    border-left-color: #28a745;
+}
+
+.helpdesk-result-item.error {
+    border-left-color: #dc3545;
+}
+
+.helpdesk-modal-close-btn {
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    line-height: 20px;
+    color: #aaa;
+    cursor: pointer;
+}
+
+.helpdesk-modal-close-btn:hover {
+    color: #000;
+}
 </style>
+
+<script>
+(function($) {
+    'use strict';
+    
+    // Check for duplicate vacations
+    $('.helpdesk-btn-check-vacation-duplicates').on('click', function() {
+        // Show modal with spinner
+        showProcessModal('Kontrola duplikátov nepritomností...', true);
+        
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'helpdesk_check_vacation_duplicates',
+                nonce: helpdeskNonce
+            },
+            timeout: 30000, // 30 second timeout
+            success: function(response) {
+                if (response.success) {
+                    let html = '<h2>Výsledok kontroly duplikátov</h2>';
+                    html += '<div class="helpdesk-result-item success">';
+                    html += '<strong>✓ ' + response.data.message + '</strong>';
+                    html += '</div>';
+                    
+                    if (response.data.count > 0) {
+                        html += '<div style="margin-top: 15px;"><h3>Nájdené duplikáty (prvých ' + response.data.count + '):</h3>';
+                        
+                        response.data.duplicates.forEach(function(dup) {
+                            html += '<div class="helpdesk-result-item error">';
+                            html += '<strong>👤 Pracovník:</strong> ' + dup.employee + '<br>';
+                            html += '<strong>📅 Záznam 1:</strong> ' + dup.record1.od + ' - ' + dup.record1.do + ' (ID: ' + dup.record1.id + ')<br>';
+                            html += '<strong>📅 Záznam 2:</strong> ' + dup.record2.od + ' - ' + dup.record2.do + ' (ID: ' + dup.record2.id + ')';
+                            html += '</div>';
+                        });
+                        
+                        if (response.data.count >= 50) {
+                            html += '<div class="helpdesk-result-item" style="background-color: #fff3cd;">';
+                            html += '<em>... a ďalšie duplikáty. Zobrazené prvých 50.</em>';
+                            html += '</div>';
+                        }
+                        
+                        html += '</div>';
+                    }
+                    
+                    showProcessModal(html, false);
+                } else {
+                    showProcessModal('<h2>Chyba</h2><div class="helpdesk-result-item error"><strong>✗ ' + response.data.message + '</strong></div>', false);
+                }
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                let errorMsg = 'Chyba pri kontrole duplikátov';
+                if (textStatus === 'timeout') {
+                    errorMsg = 'Timeout - operácia trvá príliš dlho';
+                }
+                showProcessModal('<h2>Chyba</h2><div class="helpdesk-result-item error"><strong>✗ ' + errorMsg + '</strong></div>', false);
+            }
+        });
+    });
+    
+    // Delete old vacations
+    $('.helpdesk-btn-delete-old-vacations').on('click', function() {
+        if (!confirm('Naozaj chcete vymazať všetky staré nepritomnosti (do dnešného dňa)? Toto sa neda vratiť!')) {
+            return;
+        }
+        
+        // Show modal with spinner and progress bar
+        showProcessModal('<div style="text-align: center;"><p>Mazanie starých nepritomností...</p><div style="margin: 20px 0;"><div style="height: 30px; background: #e9ecef; border-radius: 4px; overflow: hidden;"><div id="progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #28a745, #20c997); transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px;"><span id="progress-text">0%</span></div></div></div><p id="progress-message">Spracováva sa...</p></div>', true);
+        
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'helpdesk_delete_old_vacations',
+                nonce: helpdeskNonce
+            },
+            timeout: 60000, // 60 second timeout
+            success: function(response) {
+                if (response.success) {
+                    let html = '<h2>Výsledok mazania</h2>';
+                    html += '<div class="helpdesk-result-item success">';
+                    html += '<strong>✓ ' + response.data.message + '</strong>';
+                    html += '</div>';
+                    
+                    html += '<div style="margin-top: 20px;">';
+                    html += '<h3>📊 Zhrnutie operácie:</h3>';
+                    html += '<div class="helpdesk-result-item">';
+                    html += '📋 <strong>Záznamov pred mazaním:</strong> ' + response.data.before + '<br>';
+                    html += '🗑️ <strong>Vymazaných:</strong> ' + response.data.deleted + '<br>';
+                    html += '✅ <strong>Zostávajúcich:</strong> ' + response.data.after + '<br>';
+                    if (response.data.before > 0) {
+                        html += '<strong style="color: #28a745;">Úspora: -' + Math.round((response.data.deleted / response.data.before) * 100) + '%</strong>';
+                    }
+                    html += '</div>';
+                    html += '</div>';
+                    
+                    showProcessModal(html, false);
+                    
+                    // Reload page after 3 seconds
+                    setTimeout(function() {
+                        location.reload();
+                    }, 3000);
+                } else {
+                    let html = '<h2>Chyba pri mazaní</h2>';
+                    html += '<div class="helpdesk-result-item error">';
+                    html += '<strong>✗ ' + response.data.message + '</strong>';
+                    html += '</div>';
+                    
+                    if (response.data.total_records) {
+                        html += '<p>Celkem záznamov: ' + response.data.total_records + '</p>';
+                    }
+                    
+                    showProcessModal(html, false);
+                }
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                let errorMsg = 'Chyba pri mazaní nepritomností';
+                if (textStatus === 'timeout') {
+                    errorMsg = 'Timeout - mazanie trvá príliš dlho. Skúste neskôr.';
+                }
+                showProcessModal('<h2>Chyba</h2><div class="helpdesk-result-item error"><strong>✗ ' + errorMsg + '</strong></div>', false);
+            }
+        });
+    });
+    
+    // Helper function to show process modal
+    function showProcessModal(content, showSpinner) {
+        let html = '<div class="helpdesk-modal-overlay">';
+        html += '<div class="helpdesk-modal-content">';
+        html += '<span class="helpdesk-modal-close-btn" onclick="jQuery(this).closest(\'.helpdesk-modal-overlay\').remove();">×</span>';
+        
+        if (showSpinner) {
+            html += '<div class="helpdesk-spinner"></div>';
+        }
+        
+        html += content;
+        
+        if (!showSpinner) {
+            html += '<div style="margin-top: 20px; text-align: right;">';
+            html += '<button class="button button-primary" onclick="jQuery(this).closest(\'.helpdesk-modal-overlay\').remove();">Zavrieť</button>';
+            html += '</div>';
+        }
+        
+        html += '</div></div>';
+        
+        // Remove existing modal if any
+        $('.helpdesk-modal-overlay').remove();
+        
+        // Add new modal
+        $('body').append(html);
+    }
+})(jQuery);
+</script>
 

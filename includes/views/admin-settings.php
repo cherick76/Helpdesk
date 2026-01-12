@@ -18,6 +18,7 @@ $hd_enabled = get_option( 'helpdesk_enable_hd_module', true );
 $ap_enabled = get_option( 'helpdesk_enable_ap_module', true );
 
 $dashboard_display = get_option( 'helpdesk_dashboard_display', array(
+    'nazov_projektu' => true,
     'klapka' => true,
     'mobil' => true,
     'pozicia' => true,
@@ -54,6 +55,7 @@ if ( isset( $_POST['submit'] ) && isset( $_POST['_wpnonce'] ) && wp_verify_nonce
     update_option( 'helpdesk_modules', $module_status );
 
     // Save dashboard display settings
+    $dashboard_display['nazov_projektu'] = isset( $_POST['display_nazov_projektu'] ) ? true : false;
     $dashboard_display['klapka'] = isset( $_POST['display_klapka'] ) ? true : false;
     $dashboard_display['mobil'] = isset( $_POST['display_mobil'] ) ? true : false;
     $dashboard_display['pozicia'] = isset( $_POST['display_pozicia'] ) ? true : false;
@@ -112,41 +114,6 @@ if ( isset( $_POST['submit'] ) && isset( $_POST['_wpnonce'] ) && wp_verify_nonce
         <form method="post" action="">
             <?php wp_nonce_field( 'helpdesk-settings' ); ?>
 
-            <!-- Module Enable/Disable Section -->
-            <div style="background: #f5f5f5; padding: 20px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 4px;">
-                <h3><?php echo esc_html__( 'Zapínanie/Vypínanie Modulov', HELPDESK_TEXT_DOMAIN ); ?></h3>
-                <table class="form-table">
-                    <tbody>
-                        <tr>
-                            <th scope="row">
-                                <label for="enable_hd_module">
-                                    <?php echo esc_html__( 'Helpdesk (HD) Modul', HELPDESK_TEXT_DOMAIN ); ?>
-                                </label>
-                            </th>
-                            <td>
-                                <input type="checkbox" id="enable_hd_module" name="enable_hd_module" value="1" <?php checked( $hd_enabled ); ?> />
-                                <label for="enable_hd_module" style="margin-left: 5px;">
-                                    <?php echo esc_html__( 'Aktivovať HD modul (Pracovníci, Projekty, Pozície, Pohotovosť, Neprítomnosti...)', HELPDESK_TEXT_DOMAIN ); ?>
-                                </label>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row">
-                                <label for="enable_ap_module">
-                                    <?php echo esc_html__( 'Aplikačná Podpora (AP) Modul', HELPDESK_TEXT_DOMAIN ); ?>
-                                </label>
-                            </th>
-                            <td>
-                                <input type="checkbox" id="enable_ap_module" name="enable_ap_module" value="1" <?php checked( $ap_enabled ); ?> />
-                                <label for="enable_ap_module" style="margin-left: 5px;">
-                                    <?php echo esc_html__( 'Aktivovať AP modul (Riešenia, Problémy, Produkty, Podpisy, Návody...)', HELPDESK_TEXT_DOMAIN ); ?>
-                                </label>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
             <!-- AP Tab -->
             <div class="helpdesk-tab-content <?php echo $active_tab === 'ap' ? 'active' : ''; ?>" id="tab-ap">
                 <h2><?php echo esc_html__( 'Aplikačná Podpora HD (APHD) Nastavenia', HELPDESK_TEXT_DOMAIN ); ?></h2>
@@ -197,32 +164,37 @@ if ( isset( $_POST['submit'] ) && isset( $_POST['_wpnonce'] ) && wp_verify_nonce
                 <table class="form-table">
                     <tbody>
                         <tr>
-                            <th scope="row"><?php echo esc_html__( 'Dashboard - Zobrazovanie Pracovníkov', HELPDESK_TEXT_DOMAIN ); ?></th>
+                            <th scope="row"><?php echo esc_html__( 'Dashboard - Zobrazovanie', HELPDESK_TEXT_DOMAIN ); ?></th>
                             <td>
-                                <p style="margin-top: 0; color: #666; font-size: 13px;"><?php echo esc_html__( 'Vyberte, ktoré informácie sa majú zobrazovať o pracovníkoch na dashboarde:', HELPDESK_TEXT_DOMAIN ); ?></p>
+                                <p style="margin-top: 0; color: #666; font-size: 13px;"><?php echo esc_html__( 'Vyberte, ktoré informácie sa majú zobrazovať na dashboarde:', HELPDESK_TEXT_DOMAIN ); ?></p>
+                                <label>
+                                    <input type="checkbox" name="display_nazov_projektu" value="1" <?php checked( $dashboard_display['nazov_projektu'] ?? true ); ?>>
+                                    <?php echo esc_html__( 'Názov projektu', HELPDESK_TEXT_DOMAIN ); ?>
+                                </label>
+                                <br>
                                 <label>
                                     <input type="checkbox" name="display_klapka" value="1" <?php checked( $dashboard_display['klapka'] ?? true ); ?>>
-                                    <?php echo esc_html__( 'Klapka', HELPDESK_TEXT_DOMAIN ); ?>
+                                    <?php echo esc_html__( 'Klapka pracovníka', HELPDESK_TEXT_DOMAIN ); ?>
                                 </label>
                                 <br>
                                 <label>
                                     <input type="checkbox" name="display_mobil" value="1" <?php checked( $dashboard_display['mobil'] ?? true ); ?>>
-                                    <?php echo esc_html__( 'Mobil', HELPDESK_TEXT_DOMAIN ); ?>
+                                    <?php echo esc_html__( 'Mobil pracovníka', HELPDESK_TEXT_DOMAIN ); ?>
                                 </label>
                                 <br>
                                 <label>
                                     <input type="checkbox" name="display_pozicia" value="1" <?php checked( $dashboard_display['pozicia'] ?? true ); ?>>
-                                    <?php echo esc_html__( 'Pozícia', HELPDESK_TEXT_DOMAIN ); ?>
+                                    <?php echo esc_html__( 'Pozícia pracovníka', HELPDESK_TEXT_DOMAIN ); ?>
                                 </label>
                                 <br>
                                 <label>
                                     <input type="checkbox" name="display_poznamka_pracovnika" value="1" <?php checked( $dashboard_display['poznamka_pracovnika'] ?? true ); ?>>
-                                    <?php echo esc_html__( 'Poznámka z pracovníka', HELPDESK_TEXT_DOMAIN ); ?>
+                                    <?php echo esc_html__( 'Poznámka pracovníka', HELPDESK_TEXT_DOMAIN ); ?>
                                 </label>
                                 <br>
                                 <label>
                                     <input type="checkbox" name="display_hd_kontakt" value="1" <?php checked( $dashboard_display['hd_kontakt'] ?? true ); ?>>
-                                    <?php echo esc_html__( 'HD Kontakt - Spôsob Komunikácie', HELPDESK_TEXT_DOMAIN ); ?>
+                                    <?php echo esc_html__( 'HD Kontakt projektu', HELPDESK_TEXT_DOMAIN ); ?>
                                 </label>
                             </td>
                         </tr>
@@ -272,8 +244,21 @@ if ( isset( $_POST['submit'] ) && isset( $_POST['_wpnonce'] ) && wp_verify_nonce
                 <table class="form-table">
                     <tbody>
                         <tr>
-                            <th scope="row"><?php echo esc_html__( 'Aktívne Moduly', HELPDESK_TEXT_DOMAIN ); ?></th>
+                            <th scope="row"><?php echo esc_html__( 'Zapínanie/Vypínanie Modulov', HELPDESK_TEXT_DOMAIN ); ?></th>
                             <td>
+                                <div style="background: #f9f9f9; padding: 15px; margin-bottom: 15px; border-radius: 3px; border-left: 3px solid #0073aa;">
+                                    <p style="margin-top: 0; margin-bottom: 10px; font-weight: 600; color: #0073aa;"><?php echo esc_html__( 'Hlavné Moduly', HELPDESK_TEXT_DOMAIN ); ?></p>
+                                    <label style="display: flex; align-items: center; margin-bottom: 8px;">
+                                        <input type="checkbox" id="enable_hd_module" name="enable_hd_module" value="1" <?php checked( $hd_enabled ); ?> />
+                                        <span style="margin-left: 10px;"><?php echo esc_html__( 'HD Modul (Pracovníci, Projekty, Pozície, Pohotovosť...)', HELPDESK_TEXT_DOMAIN ); ?></span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; margin-bottom: 0;">
+                                        <input type="checkbox" id="enable_ap_module" name="enable_ap_module" value="1" <?php checked( $ap_enabled ); ?> />
+                                        <span style="margin-left: 10px;"><?php echo esc_html__( 'AP Modul (Riešenia, Problémy, Produkty, Podpisy...)', HELPDESK_TEXT_DOMAIN ); ?></span>
+                                    </label>
+                                </div>
+
+                                <p style="margin-top: 15px; margin-bottom: 10px; font-weight: 600; color: #333;"><?php echo esc_html__( 'Pod-Moduly', HELPDESK_TEXT_DOMAIN ); ?></p>
                                 <label>
                                     <input type="checkbox" name="module_employees" value="1" <?php checked( $module_status['employees'] ?? false ); ?>>
                                     <?php echo esc_html__( 'Pracovníci', HELPDESK_TEXT_DOMAIN ); ?>

@@ -108,6 +108,9 @@ $operating_systems = OperatingSystem::get_all();
                                 </span>
                             </td>
                             <td class="column-actions" style="text-align: center; font-size: 18px;">
+                                <button class="button button-small helpdesk-btn-view-solutions" data-id="<?php echo absint( $code['id'] ); ?>" style="border: none; background: none; padding: 5px; cursor: pointer; color: #333; filter: grayscale(100%);" title="<?php echo esc_attr__( 'Riešenia', HELPDESK_TEXT_DOMAIN ); ?>">
+                                    💡
+                                </button>
                                 <button class="button button-small helpdesk-btn-edit-code" data-id="<?php echo absint( $code['id'] ); ?>" style="border: none; background: none; padding: 5px; cursor: pointer; color: #333; filter: grayscale(100%);" title="<?php echo esc_attr__( 'Upraviť', HELPDESK_TEXT_DOMAIN ); ?>">
                                     ✏️
                                 </button>

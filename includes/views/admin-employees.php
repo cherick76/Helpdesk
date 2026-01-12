@@ -10,8 +10,23 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-$employees = Employee::get_all();
-$positions = Position::get_all();
+// Pagination setup
+$per_page = 50;
+$current_page = isset( $_GET['paged'] ) ? absint( $_GET['paged'] ) : 1;
+$offset = ( $current_page - 1 ) * $per_page;
+
+// Get total count for pagination
+$total_employees = count( Employee::get_all( array( 'limit' => 999999 ) ) );
+$total_pages = ceil( $total_employees / $per_page );
+
+// Get paginated data
+$employees = Employee::get_all( array( 
+    'limit' => $per_page, 
+    'offset' => $offset,
+    'orderby' => 'meno_priezvisko ASC'
+) );
+
+$positions = Position::get_all( array( 'limit' => 999999 ) );
 ?>
 
 <div class="wrap">
@@ -168,6 +183,38 @@ $positions = Position::get_all();
             </tbody>
         </table>
         </div>
+
+        <!-- Pagination -->
+        <?php if ( $total_pages > 1 ) : ?>
+        <div class="tablenav bottom" style="margin-top: 20px;">
+            <div class="tablenav-pages">
+                <span class="displaying-num"><?php printf( esc_html__( '%d z %d položiek', HELPDESK_TEXT_DOMAIN ), count( $employees ), $total_employees ); ?></span>
+                <span class="pagination-links">
+                    <?php if ( $current_page > 1 ) : ?>
+                        <a class="first-page button" href="<?php echo esc_url( add_query_arg( 'paged', '1' ) ); ?>" title="<?php esc_attr_e( 'Prvá stránka', HELPDESK_TEXT_DOMAIN ); ?>">&laquo;</a>
+                        <a class="prev-page button" href="<?php echo esc_url( add_query_arg( 'paged', $current_page - 1 ) ); ?>" title="<?php esc_attr_e( 'Predchádzajúca stránka', HELPDESK_TEXT_DOMAIN ); ?>">&lsaquo;</a>
+                    <?php else : ?>
+                        <span class="tablenav-pages-navspan button disabled" aria-hidden="true">&laquo;</span>
+                        <span class="tablenav-pages-navspan button disabled" aria-hidden="true">&lsaquo;</span>
+                    <?php endif; ?>
+
+                    <span class="paging-input">
+                        <label for="current-page-selector" class="screen-reader-text"><?php esc_html_e( 'Zvolte stránku', HELPDESK_TEXT_DOMAIN ); ?></label>
+                        <input class="current-page" id="current-page-selector" type="text" name="paged" value="<?php echo absint( $current_page ); ?>" size="3" aria-describedby="table-paging">
+                        <span class="tablenav-paging-text"> <?php printf( esc_html__( 'z %d', HELPDESK_TEXT_DOMAIN ), $total_pages ); ?></span>
+                    </span>
+
+                    <?php if ( $current_page < $total_pages ) : ?>
+                        <a class="next-page button" href="<?php echo esc_url( add_query_arg( 'paged', $current_page + 1 ) ); ?>" title="<?php esc_attr_e( 'Nasledujúca stránka', HELPDESK_TEXT_DOMAIN ); ?>">&rsaquo;</a>
+                        <a class="last-page button" href="<?php echo esc_url( add_query_arg( 'paged', $total_pages ) ); ?>" title="<?php esc_attr_e( 'Posledná stránka', HELPDESK_TEXT_DOMAIN ); ?>">&raquo;</a>
+                    <?php else : ?>
+                        <span class="tablenav-pages-navspan button disabled" aria-hidden="true">&rsaquo;</span>
+                        <span class="tablenav-pages-navspan button disabled" aria-hidden="true">&raquo;</span>
+                    <?php endif; ?>
+                </span>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <div style="margin-top: 15px;">
             <button id="helpdesk-bulk-assign-projects" class="button button-primary" style="display: none;">

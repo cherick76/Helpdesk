@@ -13,14 +13,60 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-$projects = Project::get_all();
-$employees = Employee::get_all();
-$communication_methods = CommunicationMethod::get_all();
-
-// Load PM managers (employees with position "SWD Projektový manažér" - skratka PM)
+// Initialize database and get tables - MUST BE FIRST
 global $wpdb;
+$projects_table = Database::get_projects_table();
 $employees_table = Database::get_employees_table();
 $positions_table = Database::get_positions_table();
+
+// Pagination setup for projects
+$per_page = 50;
+$current_page = isset( $_GET['paged'] ) ? absint( $_GET['paged'] ) : 1;
+$offset = ( $current_page - 1 ) * $per_page;
+
+// Get dashboard filter settings
+$dashboard_filters = get_option( 'helpdesk_dashboard_filters', array(
+    'show_nw_projects' => false,
+) );
+$show_nw_projects = (bool) $dashboard_filters['show_nw_projects'];
+
+// Get total count for pagination
+$count_query = "SELECT COUNT(*) FROM {$projects_table}";
+if ( ! $show_nw_projects ) {
+    $count_query .= " WHERE nazov NOT LIKE '%nw%'";
+}
+$total_projects = $wpdb->get_var( $count_query );
+$total_pages = ceil( $total_projects / $per_page );
+
+// Build WHERE clause for -nw filter - without prepare since we interpolate directly
+$where_clause = '';
+if ( ! $show_nw_projects ) {
+    $where_clause = " WHERE p.nazov NOT LIKE '%nw%'";
+}
+
+// Direct SQL query to get projects with all fields INCLUDING PM and SLA names
+// NOTE: WHERE clause is interpolated directly, not via prepare() to avoid parameter confusion
+$sql = "SELECT p.*, 
+         pm.meno_priezvisko as pm_name,
+         sla.meno_priezvisko as sla_name
+         FROM {$projects_table} p
+         LEFT JOIN {$employees_table} pm ON p.pm_manazer_id = pm.id
+         LEFT JOIN {$employees_table} sla ON p.sla_manazer_id = sla.id
+         {$where_clause}
+         ORDER BY p.nazov ASC
+         LIMIT " . absint($offset) . ", " . absint($per_page);
+
+error_log("DEBUG: Projects SQL Query: " . $sql);
+$projects = $wpdb->get_results( $sql, ARRAY_A );
+error_log("DEBUG: Projects count: " . count($projects));
+if (!empty($projects)) {
+    error_log("DEBUG: First project: " . print_r($projects[0], true));
+}
+
+$employees = Employee::get_all( array( 'limit' => 999999 ) );
+$communication_methods = CommunicationMethod::get_all( array( 'limit' => 999999 ) );
+
+// Load PM managers (employees with position "SWD Projektový manažér" - skratka PM)
 $pm_managers = $wpdb->get_results(
     $wpdb->prepare(
         "SELECT e.id, e.meno_priezvisko, p.profesia, p.skratka 
@@ -45,23 +91,14 @@ $sla_managers = $wpdb->get_results(
     ),
     ARRAY_A
 ) ?: array();
-
-// Load SLA managers (employees with position "SWD SLA manažér" - skratka SLA)
-$sla_managers = $wpdb->get_results(
-    $wpdb->prepare(
-        "SELECT e.id, e.meno_priezvisko, p.profesia, p.skratka 
-        FROM {$employees_table} e 
-        LEFT JOIN {$positions_table} p ON e.pozicia_id = p.id 
-        WHERE p.skratka = %s 
-        ORDER BY e.meno_priezvisko ASC",
-        'SLA'
-    ),
-    ARRAY_A
-) ?: array();
 ?>
 
 <div class="wrap">
     <h1><?php echo esc_html__( 'Projekty', HELPDESK_TEXT_DOMAIN ); ?></h1>
+
+    <script>
+        const nonce = <?php echo json_encode( wp_create_nonce( 'helpdesk-nonce' ) ); ?>;
+    </script>
 
     <div class="helpdesk-admin-container">
         <div class="helpdesk-button-group">
@@ -90,7 +127,7 @@ $sla_managers = $wpdb->get_results(
         <table class="wp-list-table widefat fixed striped" id="helpdesk-projects-table">
             <thead>
                 <tr>
-                    <th scope="col" class="column-zakaznicke-cislo"><?php echo esc_html__( 'Zákaznícke Číslo', HELPDESK_TEXT_DOMAIN ); ?></th>
+                    <th scope="col" class="column-zakaznicke-cislo"><?php echo esc_html__( 'Projekt', HELPDESK_TEXT_DOMAIN ); ?></th>
                     <th scope="col" class="column-spobsob-komunikacie"><?php echo esc_html__( 'Spôsob Komunikácie', HELPDESK_TEXT_DOMAIN ); ?></th>
                     <th scope="col" class="column-pm"><?php echo esc_html__( 'PM', HELPDESK_TEXT_DOMAIN ); ?></th>
                     <th scope="col" class="column-sla"><?php echo esc_html__( 'SLA', HELPDESK_TEXT_DOMAIN ); ?></th>
@@ -102,7 +139,12 @@ $sla_managers = $wpdb->get_results(
                 <?php if ( ! empty( $projects ) ) : ?>
                     <?php foreach ( $projects as $project ) : ?>
                         <tr data-project-id="<?php echo absint( $project['id'] ); ?>">
-                            <td class="column-zakaznicke-cislo"><?php echo esc_html( $project['zakaznicke_cislo'] ?? '' ); ?></td>
+                            <td class="column-zakaznicke-cislo">
+                                <strong><?php echo esc_html( $project['zakaznicke_cislo'] ?? '' ); ?></strong>
+                                <?php if ( isset( $project['nazov'] ) && ! empty( $project['nazov'] ) ) : ?>
+                                    <?php echo esc_html( $project['nazov'] ); ?>
+                                <?php endif; ?>
+                            </td>
                             <td class="column-spobsob-komunikacie"><?php echo esc_html( $project['hd_kontakt'] ?? '' ); ?></td>
                             <td class="column-pm"><?php if ( ! empty( $project['pm_manazer_id'] ) ) : ?><?php echo esc_html( $project['pm_name'] ?? '' ); ?><?php endif; ?></td>
                             <td class="column-sla"><?php if ( ! empty( $project['sla_manazer_id'] ) ) : ?><?php echo esc_html( $project['sla_name'] ?? '' ); ?><?php endif; ?></td>
@@ -129,6 +171,38 @@ $sla_managers = $wpdb->get_results(
             </tbody>
         </table>
         </div>
+
+        <!-- Pagination -->
+        <?php if ( $total_pages > 1 ) : ?>
+        <div class="tablenav bottom" style="margin-top: 20px;">
+            <div class="tablenav-pages">
+                <span class="displaying-num"><?php printf( esc_html__( '%d z %d položiek', HELPDESK_TEXT_DOMAIN ), count( $projects ), $total_projects ); ?></span>
+                <span class="pagination-links">
+                    <?php if ( $current_page > 1 ) : ?>
+                        <a class="first-page button" href="<?php echo esc_url( add_query_arg( 'paged', '1' ) ); ?>" title="<?php esc_attr_e( 'Prvá stránka', HELPDESK_TEXT_DOMAIN ); ?>">&laquo;</a>
+                        <a class="prev-page button" href="<?php echo esc_url( add_query_arg( 'paged', $current_page - 1 ) ); ?>" title="<?php esc_attr_e( 'Predchádzajúca stránka', HELPDESK_TEXT_DOMAIN ); ?>">&lsaquo;</a>
+                    <?php else : ?>
+                        <span class="tablenav-pages-navspan button disabled" aria-hidden="true">&laquo;</span>
+                        <span class="tablenav-pages-navspan button disabled" aria-hidden="true">&lsaquo;</span>
+                    <?php endif; ?>
+
+                    <span class="paging-input">
+                        <label for="current-page-selector" class="screen-reader-text"><?php esc_html_e( 'Zvolte stránku', HELPDESK_TEXT_DOMAIN ); ?></label>
+                        <input class="current-page" id="current-page-selector" type="text" name="paged" value="<?php echo absint( $current_page ); ?>" size="3" aria-describedby="table-paging">
+                        <span class="tablenav-paging-text"> <?php printf( esc_html__( 'z %d', HELPDESK_TEXT_DOMAIN ), $total_pages ); ?></span>
+                    </span>
+
+                    <?php if ( $current_page < $total_pages ) : ?>
+                        <a class="next-page button" href="<?php echo esc_url( add_query_arg( 'paged', $current_page + 1 ) ); ?>" title="<?php esc_attr_e( 'Nasledujúca stránka', HELPDESK_TEXT_DOMAIN ); ?>">&rsaquo;</a>
+                        <a class="last-page button" href="<?php echo esc_url( add_query_arg( 'paged', $total_pages ) ); ?>" title="<?php esc_attr_e( 'Posledná stránka', HELPDESK_TEXT_DOMAIN ); ?>">&raquo;</a>
+                    <?php else : ?>
+                        <span class="tablenav-pages-navspan button disabled" aria-hidden="true">&rsaquo;</span>
+                        <span class="tablenav-pages-navspan button disabled" aria-hidden="true">&raquo;</span>
+                    <?php endif; ?>
+                </span>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 

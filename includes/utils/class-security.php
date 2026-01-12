@@ -26,32 +26,40 @@ class Security {
      * @return bool True if all checks pass, false otherwise
      */
     public static function verify_ajax_request( $nonce_param = '_wpnonce', $nonce_action = 'helpdesk-nonce', $capability = 'manage_helpdesk' ) {
-        // DEBUG
-        error_log( 'DEBUG Security::verify_ajax_request called' );
-        error_log( 'DEBUG nonce_param: ' . $nonce_param );
-        error_log( 'DEBUG nonce_action: ' . $nonce_action );
-        error_log( 'DEBUG $_POST keys: ' . implode( ', ', array_keys( $_POST ) ) );
-        error_log( 'DEBUG $_POST[' . $nonce_param . ']: ' . ( isset( $_POST[$nonce_param] ) ? $_POST[$nonce_param] : 'NOT SET' ) );
+        // Check if nonce parameter exists in POST - try specified param first, then alternatives
+        $nonce = null;
+        if ( isset( $_POST[$nonce_param] ) ) {
+            $nonce = $_POST[$nonce_param];
+        } elseif ( $nonce_param !== '_ajax_nonce' && isset( $_POST['_ajax_nonce'] ) ) {
+            // Fallback to _ajax_nonce if not found in specified param
+            $nonce = $_POST['_ajax_nonce'];
+        } elseif ( $nonce_param !== '_wpnonce' && isset( $_POST['_wpnonce'] ) ) {
+            // Fallback to _wpnonce if not found in specified param
+            $nonce = $_POST['_wpnonce'];
+        }
         
-        // Try to verify with primary nonce parameter
-        $nonce_verified = check_ajax_referer( $nonce_action, $nonce_param, false );
-        error_log( 'DEBUG check_ajax_referer result: ' . var_export( $nonce_verified, true ) );
+        if ( ! $nonce ) {
+            wp_send_json_error( array(
+                'message' => __( 'Security check failed - nonce missing', HELPDESK_TEXT_DOMAIN )
+            ), 403 );
+            return false;
+        }
+
+        // Verify the nonce - try with the specified action first
+        $nonce_verified = wp_verify_nonce( $nonce, $nonce_action );
         
-        // If primary check fails, try alternative parameters for backwards compatibility
+        // If verification fails, try alternative actions for backwards compatibility
         if ( ! $nonce_verified ) {
-            $alt_params = array( '_nonce', '_ajax_nonce' );
-            foreach ( $alt_params as $alt_param ) {
-                if ( $alt_param !== $nonce_param && check_ajax_referer( $nonce_action, $alt_param, false ) ) {
-                    error_log( 'DEBUG Alternative nonce param ' . $alt_param . ' verified!' );
+            $alt_actions = array( 'helpdesk-nonce', 'helpdesk_nonce', 'wp_rest' );
+            foreach ( $alt_actions as $alt_action ) {
+                if ( $alt_action !== $nonce_action && wp_verify_nonce( $nonce, $alt_action ) ) {
                     $nonce_verified = true;
                     break;
                 }
             }
         }
         
-        // Check nonce result
         if ( ! $nonce_verified ) {
-            error_log( 'DEBUG Nonce verification FAILED' );
             wp_send_json_error( array(
                 'message' => __( 'Security check failed - nonce invalid', HELPDESK_TEXT_DOMAIN )
             ), 403 );
@@ -89,6 +97,11 @@ class Security {
         $user_id = get_current_user_id();
         if ( ! $user_id ) {
             return true; // Not logged in
+        }
+
+        // Admins bypass rate limiting
+        if ( current_user_can( 'manage_options' ) ) {
+            return false;
         }
 
         $transient_key = 'helpdesk_rate_limit_' . $user_id;
