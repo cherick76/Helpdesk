@@ -245,9 +245,23 @@ $bugs = Bug::get_all();
             showSolutionDetail(guideId);
         });
 
-        // Close modal
+        // Close modal on close button click
         $(document).on('click', '.helpdesk-modal-close', function() {
             $('#solution-detail-modal').hide();
+        });
+
+        // Close modal when clicking outside (on backdrop)
+        $(document).on('click', '#solution-detail-modal', function(e) {
+            if (e.target === this) {
+                $('#solution-detail-modal').hide();
+            }
+        });
+
+        // Close modal on Escape key
+        $(document).on('keydown', function(e) {
+            if (e.keyCode === 27) { // Escape key
+                $('#solution-detail-modal').hide();
+            }
         });
 
         function searchSolutions() {
