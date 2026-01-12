@@ -1,6 +1,6 @@
 <?php
 /**
- * Dashboard View
+ * Dashboard View - Tab Based
  */
 
 use HelpDesk\Models\Employee;
@@ -18,53 +18,68 @@ $bugs = Bug::get_all();
 $guides = GeneralGuide::get_all_active();
 ?>
 
-<div class="wrap">
-    <h1><?php echo esc_html__( 'HelpDesk Dashboard', HELPDESK_TEXT_DOMAIN ); ?></h1>
+<div class="wrap" style="max-width: 1200px; margin: 0 auto;">
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; border-radius: 8px; margin-bottom: 30px; margin-top: 20px;">
+        <h1 style="margin: 0 0 10px 0; font-size: 36px;">🎯 HelpDesk Dashboard</h1>
+        <p style="margin: 0; opacity: 0.9; font-size: 16px;">Spravujte projekty, riešenia a tím na jednom mieste</p>
+    </div>
 
-    <div class="helpdesk-dashboard-wrapper">
-        <!-- LEFT COLUMN: Project Search -->
-        <div class="helpdesk-admin-container dashboard-column">
-            <div class="dashboard-column-header">
-                <h2><?php echo esc_html__( '🔍 Vyhľadávanie projektov', HELPDESK_TEXT_DOMAIN ); ?></h2>
-            </div>
+    <!-- Tab Navigation -->
+    <div style="display: flex; gap: 0; margin-bottom: 0; border-bottom: 2px solid #ddd; background: white; border-radius: 8px 8px 0 0;">
+        <button class="dashboard-tab-btn active" data-tab="projects" style="flex: 1; padding: 15px 20px; border: none; background: none; cursor: pointer; font-size: 14px; font-weight: 600; color: #666; transition: all 0.3s; border-bottom: 3px solid transparent; margin-bottom: -2px;">
+            📦 Projekty
+        </button>
+        <button class="dashboard-tab-btn" data-tab="solutions" style="flex: 1; padding: 15px 20px; border: none; background: none; cursor: pointer; font-size: 14px; font-weight: 600; color: #666; transition: all 0.3s; border-bottom: 3px solid transparent; margin-bottom: -2px;">
+            💡 Riešenia
+        </button>
+        <button class="dashboard-tab-btn" data-tab="employees" style="flex: 1; padding: 15px 20px; border: none; background: none; cursor: pointer; font-size: 14px; font-weight: 600; color: #666; transition: all 0.3s; border-bottom: 3px solid transparent; margin-bottom: -2px;">
+            👥 Tím
+        </button>
+    </div>
+
+    <!-- Tab Content Container -->
+    <div style="background: white; border-radius: 0 0 8px 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.08);">
+
+        <!-- TAB 1: PROJECTS -->
+        <div class="dashboard-tab-content active" id="projects-tab" style="padding: 30px;">
+            <h2 style="margin-top: 0; color: #333;">Vyhľadávanie projektov</h2>
             
-            <div class="dashboard-search-box">
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
                 <input 
                     type="text" 
                     id="dashboard-project-search" 
-                    class="helpdesk-search-input" 
-                    placeholder="<?php echo esc_attr__( 'Zadajte názov projektu...', HELPDESK_TEXT_DOMAIN ); ?>"
+                    placeholder="Zadajte názov projektu..."
                     autocomplete="off"
+                    style="flex: 1; padding: 12px 15px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;"
                 >
-                <div class="search-info"><?php echo esc_html__( 'Vyhľadávajte projekty podľa názvu', HELPDESK_TEXT_DOMAIN ); ?></div>
+                <button id="btn-search-projects" class="button button-primary" style="padding: 12px 25px;">
+                    🔍 Hľadať
+                </button>
             </div>
 
-            <div id="dashboard-search-results" class="dashboard-results-container" style="display: none;">
-                <div class="results-count">
-                    <span id="dashboard-results-count">0</span> <?php echo esc_html__( 'výsledkov', HELPDESK_TEXT_DOMAIN ); ?>
+            <div id="dashboard-search-results" style="display: none;">
+                <div class="results-count" style="margin-bottom: 15px; padding: 10px; background: #f0f0f0; border-radius: 4px;">
+                    <span id="dashboard-results-count">0</span> projektov
                 </div>
-                <div id="dashboard-search-results-tbody" class="projects-grid">
+                <div id="dashboard-search-results-tbody" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 15px;">
                 </div>
             </div>
 
-            <div id="dashboard-no-results" class="no-results-message">
-                <p><?php echo esc_html__( 'Začnite písaním do vyhľadávacieho poľa...', HELPDESK_TEXT_DOMAIN ); ?></p>
+            <div id="dashboard-no-results" style="text-align: center; padding: 40px; color: #999;">
+                <p style="font-size: 16px;">🔍 Začnite písaním do vyhľadávacieho poľa...</p>
             </div>
         </div>
 
-        <!-- RIGHT COLUMN: Solutions Search (NEW) -->
-        <div class="helpdesk-admin-container dashboard-column">
-            <div class="dashboard-column-header">
-                <h2><?php echo esc_html__( '💡 Riešenia', HELPDESK_TEXT_DOMAIN ); ?></h2>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+        <!-- TAB 2: SOLUTIONS -->
+        <div class="dashboard-tab-content" id="solutions-tab" style="padding: 30px; display: none;">
+            <h2 style="margin-top: 0; color: #333;">Vyhľadávanie riešení</h2>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
                 <div>
-                    <label style="display: block; font-size: 12px; font-weight: 500; margin-bottom: 5px;">
-                        <?php echo esc_html__( 'Produkt', HELPDESK_TEXT_DOMAIN ); ?>
-                    </label>
-                    <select id="dashboard-solutions-product" class="widefat" style="padding: 8px; border: 1px solid #ddd; border-radius: 3px; font-size: 13px;">
-                        <option value=""><?php echo esc_html__( '-- Všetky --', HELPDESK_TEXT_DOMAIN ); ?></option>
+                    <label style="display: block; font-weight: 500; margin-bottom: 8px; color: #333;">Produkt</label>
+                    <select id="dashboard-solutions-product" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                        <option value="">-- Všetky produkty --</option>
                         <?php foreach ( $products as $product ) : ?>
                             <option value="<?php echo esc_attr( $product['id'] ); ?>"><?php echo esc_html( $product['nazov'] ); ?></option>
                         <?php endforeach; ?>
@@ -72,199 +87,156 @@ $guides = GeneralGuide::get_all_active();
                 </div>
 
                 <div>
-                    <label style="display: block; font-size: 12px; font-weight: 500; margin-bottom: 5px;">
-                        <?php echo esc_html__( 'Problém', HELPDESK_TEXT_DOMAIN ); ?>
-                    </label>
-                    <select id="dashboard-solutions-problem" class="widefat" style="padding: 8px; border: 1px solid #ddd; border-radius: 3px; font-size: 13px;">
-                        <option value=""><?php echo esc_html__( '-- Všetky --', HELPDESK_TEXT_DOMAIN ); ?></option>
+                    <label style="display: block; font-weight: 500; margin-bottom: 8px; color: #333;">Problém</label>
+                    <select id="dashboard-solutions-problem" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                        <option value="">-- Všetky problémy --</option>
                         <?php foreach ( $bugs as $bug ) : ?>
                             <option value="<?php echo esc_attr( $bug->id ); ?>"><?php echo esc_html( $bug->nazov ); ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
+
+                <div>
+                    <label style="display: block; font-weight: 500; margin-bottom: 8px; color: #333;">Vyhľadávanie</label>
+                    <input 
+                        type="text" 
+                        id="dashboard-solutions-search" 
+                        placeholder="Hľadať v názve alebo popise..."
+                        autocomplete="off"
+                        style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;"
+                    >
+                </div>
             </div>
 
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; font-size: 12px; font-weight: 500; margin-bottom: 5px;">
-                    <?php echo esc_html__( 'Vyhľadávanie', HELPDESK_TEXT_DOMAIN ); ?>
-                </label>
-                <input 
-                    type="text" 
-                    id="dashboard-solutions-search" 
-                    class="helpdesk-search-input" 
-                    placeholder="<?php echo esc_attr__( 'Hľadať v názve alebo popise...', HELPDESK_TEXT_DOMAIN ); ?>"
-                    autocomplete="off"
-                    style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 3px; font-size: 13px;"
-                >
-            </div>
-
-            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                <button id="btn-dashboard-search-solutions" class="button button-primary" style="flex: 1; padding: 8px;">
-                    <?php echo esc_html__( '🔍 Hľadať', HELPDESK_TEXT_DOMAIN ); ?>
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <button id="btn-dashboard-search-solutions" class="button button-primary" style="padding: 10px 20px;">
+                    🔍 Hľadať
                 </button>
-                <button id="btn-dashboard-reset-solutions" class="button" style="flex: 0.8; padding: 8px;">
-                    <?php echo esc_html__( 'Vynulovať', HELPDESK_TEXT_DOMAIN ); ?>
+                <button id="btn-dashboard-reset-solutions" class="button" style="padding: 10px 20px;">
+                    Vynulovať
                 </button>
             </div>
 
-            <div id="dashboard-solutions-results" class="dashboard-results-container" style="display: none;">
-                <div class="results-count">
-                    <span id="dashboard-solutions-count">0</span> <?php echo esc_html__( 'riešení', HELPDESK_TEXT_DOMAIN ); ?>
+            <div id="dashboard-solutions-results" style="display: none;">
+                <div class="results-count" style="margin-bottom: 15px; padding: 10px; background: #f0f0f0; border-radius: 4px;">
+                    <span id="dashboard-solutions-count">0</span> riešení
                 </div>
-                <div id="dashboard-solutions-list" style="display: grid; grid-template-columns: 1fr; gap: 10px; max-height: 400px; overflow-y: auto;">
+                <div id="dashboard-solutions-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; max-height: 600px; overflow-y: auto;">
                 </div>
             </div>
 
-            <div id="dashboard-no-solutions" class="no-results-message">
-                <p><?php echo esc_html__( 'Začnite vyhľadávaním...', HELPDESK_TEXT_DOMAIN ); ?></p>
-            </div>
-        </div>
-    </div>
-
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
-        <!-- Main Employee Details Card -->
-        <div class="card" id="main-employee-card" style="display: none; grid-column: 1 / -1;">
-            <h2 style="margin-bottom: 20px;"><?php echo esc_html__( 'Priradiť pracovníkovi', HELPDESK_TEXT_DOMAIN ); ?></h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
-                <div style="padding: 15px; background-color: #f9f9f9; border-radius: 3px;">
-                    <h4 style="margin: 0 0 8px 0;"><?php echo esc_html__( 'Meno a priezvisko', HELPDESK_TEXT_DOMAIN ); ?></h4>
-                    <p id="main-employee-meno" style="font-size: 16px; font-weight: 600; margin: 0; color: #23282d;"></p>
-                </div>
-                
-                <div style="padding: 15px; background-color: #f9f9f9; border-radius: 3px;">
-                    <h4 style="margin: 0 0 8px 0;"><?php echo esc_html__( 'Klapka', HELPDESK_TEXT_DOMAIN ); ?></h4>
-                    <p id="main-employee-klapka" style="font-size: 16px; font-weight: 600; margin: 0; color: #23282d;"></p>
-                </div>
-                
-                <div style="padding: 15px; background-color: #f9f9f9; border-radius: 3px;">
-                    <h4 style="margin: 0 0 8px 0;"><?php echo esc_html__( 'Telefón', HELPDESK_TEXT_DOMAIN ); ?></h4>
-                    <p id="main-employee-telefon" style="font-size: 16px; font-weight: 600; margin: 0; color: #23282d;"></p>
-                </div>
-                
-                <div style="padding: 15px; background-color: #f9f9f9; border-radius: 3px;">
-                    <h4 style="margin: 0 0 8px 0;"><?php echo esc_html__( 'Pozícia', HELPDESK_TEXT_DOMAIN ); ?></h4>
-                    <p id="main-employee-pozicia" style="font-size: 16px; font-weight: 600; margin: 0; color: #23282d;"></p>
-                </div>
-                
-                <div style="padding: 15px; background-color: #f9f9f9; border-radius: 3px; grid-column: 1 / -1;">
-                    <h4 style="margin: 0 0 8px 0;"><?php echo esc_html__( 'Poznámka', HELPDESK_TEXT_DOMAIN ); ?></h4>
-                    <p id="main-employee-poznamka" style="font-size: 16px; font-weight: 600; margin: 0; color: #23282d;"></p>
-                </div>
+            <div id="dashboard-no-solutions" style="text-align: center; padding: 40px; color: #999;">
+                <p style="font-size: 16px;">🔍 Začnite vyhľadávaním...</p>
             </div>
         </div>
 
-        <!-- Standby Employees Card -->
-        <div class="card" id="standby-employees-card" style="display: none; grid-column: 1 / -1;">
-            <h2 style="margin-bottom: 20px;"><?php echo esc_html__( 'Pracovníci z pohotovosti v CRM', HELPDESK_TEXT_DOMAIN ); ?></h2>
-            <table class="wp-list-table widefat fixed striped" id="standby-employees-table">
-                <thead>
-                    <tr>
-                        <th><?php echo esc_html__( 'Meno a priezvisko', HELPDESK_TEXT_DOMAIN ); ?></th>
-                        <th><?php echo esc_html__( 'Klapka', HELPDESK_TEXT_DOMAIN ); ?></th>
-                        <th><?php echo esc_html__( 'Mobil', HELPDESK_TEXT_DOMAIN ); ?></th>
-                        <th><?php echo esc_html__( 'Pozícia', HELPDESK_TEXT_DOMAIN ); ?></th>
-                        <th><?php echo esc_html__( 'Poznámka', HELPDESK_TEXT_DOMAIN ); ?></th>
-                    </tr>
-                </thead>
-                <tbody id="standby-employees-tbody">
-                </tbody>
-            </table>
+        <!-- TAB 3: EMPLOYEES -->
+        <div class="dashboard-tab-content" id="employees-tab" style="padding: 30px; display: none;">
+            <h2 style="margin-top: 0; color: #333;">Tím a pohotovosť</h2>
+            
+            <!-- Selected Employee Card -->
+            <div id="main-employee-card" style="display: none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+                <h3 style="margin-top: 0; margin-bottom: 15px;">Vybraný pracovník</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <div>
+                        <p style="margin: 0 0 5px 0; opacity: 0.9; font-size: 12px;">Meno</p>
+                        <p id="main-employee-meno" style="margin: 0; font-size: 16px; font-weight: 600;"></p>
+                    </div>
+                    <div>
+                        <p style="margin: 0 0 5px 0; opacity: 0.9; font-size: 12px;">Klapka</p>
+                        <p id="main-employee-klapka" style="margin: 0; font-size: 16px; font-weight: 600;"></p>
+                    </div>
+                    <div>
+                        <p style="margin: 0 0 5px 0; opacity: 0.9; font-size: 12px;">Telefón</p>
+                        <p id="main-employee-telefon" style="margin: 0; font-size: 16px; font-weight: 600;"></p>
+                    </div>
+                    <div>
+                        <p style="margin: 0 0 5px 0; opacity: 0.9; font-size: 12px;">Pozícia</p>
+                        <p id="main-employee-pozicia" style="margin: 0; font-size: 16px; font-weight: 600;"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Standby Employees Table -->
+            <div id="standby-employees-card" style="display: none;">
+                <h3 style="margin-bottom: 15px;">Pracovníci z pohotovosti</h3>
+                <table class="wp-list-table widefat fixed striped">
+                    <thead>
+                        <tr style="background: #f5f5f5;">
+                            <th style="padding: 12px;">Meno a priezvisko</th>
+                            <th style="padding: 12px;">Klapka</th>
+                            <th style="padding: 12px;">Mobil</th>
+                            <th style="padding: 12px;">Pozícia</th>
+                            <th style="padding: 12px;">Poznámka</th>
+                        </tr>
+                    </thead>
+                    <tbody id="standby-employees-tbody">
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="no-employees" style="text-align: center; padding: 40px; color: #999;">
+                <p style="font-size: 16px;">👥 Zatiaľ žádní pracovníci</p>
+            </div>
         </div>
-    </div>
 
     </div>
 </div>
 
-
-
 <style>
-.helpdesk-modal {
-    position: fixed !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    background-color: rgba(0, 0, 0, 0.5) !important;
-    display: none !important;
-    align-items: center !important;
-    justify-content: center !important;
-    z-index: 99999 !important;
-}
+    .dashboard-tab-btn {
+        position: relative;
+    }
 
-.helpdesk-modal.active {
-    display: flex !important;
-}
+    .dashboard-tab-btn:hover {
+        background: #f5f5f5 !important;
+        color: #0073aa !important;
+    }
 
-.helpdesk-modal-content {
-    background-color: #fff !important;
-    border-radius: 5px !important;
-    width: 90% !important;
-    max-width: 500px !important;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3) !important;
-}
+    .dashboard-tab-btn.active {
+        color: #0073aa !important;
+        border-bottom-color: #0073aa !important;
+    }
 
-.helpdesk-modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px;
-}
+    .dashboard-tab-content {
+        animation: fadeIn 0.3s ease-in;
+    }
 
-.helpdesk-modal-close {
-    background: none;
-    border: none;
-    font-size: 28px;
-    cursor: pointer;
-    color: #999;
-}
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
 
-.helpdesk-modal-close:hover {
-    color: #000;
-}
+    .project-card {
+        background: #f9f9f9;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 15px;
+        transition: all 0.3s;
+    }
 
-.helpdesk-dashboard {
-    margin-top: 20px;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 20px;
-}
+    .project-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
 
-.helpdesk-search-section {
-    padding: 0;
-}
+    .project-card h4 {
+        margin: 0 0 10px 0;
+        color: #0073aa;
+        font-size: 15px;
+    }
 
-#dashboard-search-results {
-    margin-top: 20px;
-    border: 1px solid #999 !important;
-    border-radius: 4px !important;
-    background-color: #fff !important;
-    padding: 0 !important;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04) !important;
-}
-
-#dashboard-search-results > div {
-    border: none !important;
-    box-shadow: none !important;
-    padding: 15px !important;
-}
-
-#dashboard-search-results table th {
-    font-weight: 600;
-    background-color: #f5f5f5;
-}
-
-#dashboard-search-results table td {
-    padding: 10px;
-    vertical-align: middle;
-}
-
-#dashboard-search-results .dashboard-project-select {
-    white-space: nowrap;
-}
-
-.center {
-    text-align: center;
-}
+    .project-card p {
+        margin: 5px 0;
+        font-size: 13px;
+        color: #666;
+    }
 </style>
 
 <script>
@@ -279,40 +251,94 @@ $guides = GeneralGuide::get_all_active();
         const nonce = helpdesk.nonce;
         const ajaxurl = helpdesk.ajaxurl;
 
-        // Search Solutions button
-        $('#btn-dashboard-search-solutions').on('click', function() {
-            searchDashboardSolutions();
+        // Tab switching
+        $('.dashboard-tab-btn').on('click', function() {
+            const tabName = $(this).data('tab');
+            
+            $('.dashboard-tab-btn').removeClass('active');
+            $('.dashboard-tab-content').removeClass('active').hide();
+            
+            $(this).addClass('active');
+            $('#' + tabName + '-tab').addClass('active').fadeIn();
         });
 
-        // Reset filters button
+        // Projects search
+        $('#btn-search-projects').on('click', function() {
+            searchProjects();
+        });
+
+        $('#dashboard-project-search').on('keypress', function(e) {
+            if (e.which === 13) {
+                searchProjects();
+            }
+        });
+
+        // Solutions search
+        $('#btn-dashboard-search-solutions').on('click', function() {
+            searchSolutions();
+        });
+
         $('#btn-dashboard-reset-solutions').on('click', function() {
             $('#dashboard-solutions-product').val('');
             $('#dashboard-solutions-problem').val('');
             $('#dashboard-solutions-search').val('');
             $('#dashboard-solutions-results').hide();
             $('#dashboard-no-solutions').show();
-            $('#dashboard-solutions-list').html('');
         });
 
-        // Search on Enter key
         $('#dashboard-solutions-search').on('keypress', function(e) {
             if (e.which === 13) {
-                searchDashboardSolutions();
-                return false;
+                searchSolutions();
             }
         });
 
-        function searchDashboardSolutions() {
+        function searchProjects() {
+            const searchTerm = $('#dashboard-project-search').val();
+            
+            if (!searchTerm) {
+                $('#dashboard-no-results').show();
+                $('#dashboard-search-results').hide();
+                return;
+            }
+
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'helpdesk_search_projects',
+                    _wpnonce: nonce,
+                    search: searchTerm
+                },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success && response.data.projects) {
+                        const projects = response.data.projects;
+                        let html = '';
+                        
+                        projects.forEach(function(project) {
+                            html += '<div class="project-card">' +
+                                '<h4>' + escapeHtml(project.nazov) + '</h4>' +
+                                '<p><strong>Číslo:</strong> ' + escapeHtml(project.zakaznicke_cislo) + '</p>' +
+                                '<p><strong>Pracovníci:</strong> ' + (project.pocet_pracovnikov || 0) + '</p>' +
+                                '</div>';
+                        });
+                        
+                        $('#dashboard-results-count').text(projects.length);
+                        $('#dashboard-search-results-tbody').html(html);
+                        $('#dashboard-search-results').show();
+                        $('#dashboard-no-results').hide();
+                    }
+                }
+            });
+        }
+
+        function searchSolutions() {
             const filters = {
                 search: $('#dashboard-solutions-search').val(),
                 produkt: $('#dashboard-solutions-product').val(),
                 problem_id: $('#dashboard-solutions-problem').val(),
                 kategoria: ''
             };
-
-            $('#dashboard-solutions-results').hide();
-            $('#dashboard-no-solutions').hide();
-            $('#dashboard-solutions-list').html('<div style="text-align: center; padding: 20px;"><p><?php echo esc_html__( "Načítavam...", HELPDESK_TEXT_DOMAIN ); ?></p></div>');
 
             $.ajax({
                 url: ajaxurl,
@@ -326,53 +352,33 @@ $guides = GeneralGuide::get_all_active();
                 success: function(response) {
                     if (response.success && response.data.guides) {
                         const guides = response.data.guides;
-
+                        
                         if (guides.length === 0) {
                             $('#dashboard-no-solutions').show();
                             $('#dashboard-solutions-results').hide();
                         } else {
                             let html = '';
                             guides.forEach(function(guide) {
-                                html += renderSolutionCard(guide);
+                                const tagy = guide.tagy ? (typeof guide.tagy === 'string' ? JSON.parse(guide.tagy) : guide.tagy) : [];
+                                const tagyHtml = tagy.slice(0, 2).map(t => 
+                                    '<span style="display: inline-block; background: #e8f5e9; color: #2e7d32; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-right: 3px;">#' + escapeHtml(t) + '</span>'
+                                ).join('');
+                                
+                                html += '<div style="border: 1px solid #ddd; border-radius: 6px; padding: 15px; background: #f9f9f9;">' +
+                                    '<h4 style="margin: 0 0 8px 0; color: #0073aa; font-size: 14px;">' + escapeHtml(guide.nazov) + '</h4>' +
+                                    '<p style="margin: 5px 0; font-size: 12px; color: #666;">' + escapeHtml(guide.popis.substring(0, 80)) + '...</p>' +
+                                    (tagyHtml ? '<div style="margin-top: 8px;">' + tagyHtml + '</div>' : '') +
+                                    '</div>';
                             });
+                            
                             $('#dashboard-solutions-count').text(guides.length);
                             $('#dashboard-solutions-list').html(html);
                             $('#dashboard-solutions-results').show();
                             $('#dashboard-no-solutions').hide();
                         }
-                    } else {
-                        $('#dashboard-no-solutions').show();
-                        $('#dashboard-solutions-results').hide();
                     }
-                },
-                error: function() {
-                    $('#dashboard-no-solutions').show();
-                    $('#dashboard-solutions-results').hide();
                 }
             });
-        }
-
-        function renderSolutionCard(guide) {
-            const tagy = guide.tagy ? (typeof guide.tagy === 'string' ? JSON.parse(guide.tagy) : guide.tagy) : [];
-            const tagyHtml = tagy.slice(0, 2).map(t => 
-                '<span style="display: inline-block; background: #e8f5e9; color: #2e7d32; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-right: 3px;">#' + escapeHtml(t) + '</span>'
-            ).join('');
-
-            return `
-                <div style="border: 1px solid #ddd; border-radius: 4px; padding: 12px; background: #f9f9f9; cursor: pointer; transition: all 0.3s ease;">
-                    <div style="display: flex; justify-content: space-between; align-items: start; gap: 10px;">
-                        <div style="flex: 1;">
-                            <h4 style="margin: 0 0 5px 0; color: #0073aa; font-size: 14px; font-weight: 600;">
-                                ${escapeHtml(guide.nazov)}
-                            </h4>
-                            <p style="margin: 5px 0; color: #666; font-size: 12px;">
-                                ${escapeHtml(guide.popis.substring(0, 80))}...
-                            </p>
-                            ${tagyHtml ? `<div style="margin-top: 5px;">${tagyHtml}</div>` : ''}
-                        </div>
-                    </div>
-                </div>
-            `;
         }
 
         function escapeHtml(text) {
