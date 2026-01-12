@@ -221,8 +221,17 @@ class Admin {
             
             add_submenu_page(
                 'helpdesk',
-                __( 'Riešenia', HELPDESK_TEXT_DOMAIN ),
-                __( 'Riešenia', HELPDESK_TEXT_DOMAIN ),
+                __( 'Riešenia (Aplikačná Podpora)', HELPDESK_TEXT_DOMAIN ),
+                __( '🔍 Riešenia', HELPDESK_TEXT_DOMAIN ),
+                'manage_helpdesk',
+                'helpdesk-solutions',
+                array( $this, 'render_solutions' )
+            );
+
+            add_submenu_page(
+                'helpdesk',
+                __( 'Chyby / Problémy', HELPDESK_TEXT_DOMAIN ),
+                __( 'Chyby', HELPDESK_TEXT_DOMAIN ),
                 'manage_helpdesk',
                 'helpdesk-bugs',
                 array( $this, 'render_bugs' )
@@ -230,8 +239,8 @@ class Admin {
 
             add_submenu_page(
                 'helpdesk',
-                __( 'Problémy', HELPDESK_TEXT_DOMAIN ),
-                __( 'Problémy', HELPDESK_TEXT_DOMAIN ),
+                __( 'Kódy Chýb', HELPDESK_TEXT_DOMAIN ),
+                __( 'Kódy Chýb', HELPDESK_TEXT_DOMAIN ),
                 'manage_helpdesk',
                 'helpdesk-bug-codes',
                 array( $this, 'render_bug_codes' )
@@ -409,6 +418,13 @@ class Admin {
      */
     public function render_bugs() {
         require_once HELPDESK_PLUGIN_DIR . 'includes/views/admin-bugs.php';
+    }
+
+    /**
+     * Render solutions (Riešenia) page
+     */
+    public function render_solutions() {
+        require_once HELPDESK_PLUGIN_DIR . 'includes/views/admin-solutions.php';
     }
 
     /**

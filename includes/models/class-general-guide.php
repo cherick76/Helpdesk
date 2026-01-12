@@ -27,13 +27,14 @@ class GeneralGuide extends BaseModel {
             'nazov' => $data['nazov'] ?? '',
             'kategoria' => $data['kategoria'] ?? '',
             'produkt' => $data['produkt'] ?? 0,
+            'problem_id' => $data['problem_id'] ?? 0,
             'popis' => $data['popis'] ?? '',
             'tagy' => $data['tagy'] ?? '',
             'aktivny' => $data['aktivny'] ?? 1,
         );
 
         // Proper format array
-        $formats = array( '%s', '%s', '%d', '%s', '%s', '%d' );
+        $formats = array( '%s', '%s', '%d', '%d', '%s', '%s', '%d' );
 
         $result = $wpdb->insert(
             $this->table,
@@ -65,13 +66,14 @@ class GeneralGuide extends BaseModel {
             'nazov' => $data['nazov'] ?? '',
             'kategoria' => $data['kategoria'] ?? '',
             'produkt' => $data['produkt'] ?? 0,
+            'problem_id' => $data['problem_id'] ?? 0,
             'popis' => $data['popis'] ?? '',
             'tagy' => $data['tagy'] ?? '',
             'aktivny' => $data['aktivny'] ?? 1,
         );
 
         // Proper format array
-        $formats = array( '%s', '%s', '%d', '%s', '%s', '%d' );
+        $formats = array( '%s', '%s', '%d', '%d', '%s', '%s', '%d' );
 
         $result = $wpdb->update(
             $this->table,
@@ -151,6 +153,63 @@ class GeneralGuide extends BaseModel {
             OBJECT
         );
 
+        return $results ?: array();
+    }
+
+    /**
+     * Get guides by problem/bug code
+     */
+    public static function get_by_problem( $problem_id ) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'hd_vseobecne_navody';
+        
+        $results = $wpdb->get_results(
+            $wpdb->prepare( "SELECT * FROM {$table} WHERE problem_id = %d AND aktivny = 1 ORDER BY nazov ASC", $problem_id ),
+            OBJECT
+        );
+
+        return $results ?: array();
+    }
+
+    /**
+     * Search guides by product and problem
+     */
+    public static function search_by_filters( $filters ) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'hd_vseobecne_navody';
+        
+        $where = array( 'aktivny = 1' );
+        $params = array();
+        
+        if ( ! empty( $filters['search'] ) ) {
+            $where[] = "(nazov LIKE %s OR popis LIKE %s OR kategoria LIKE %s)";
+            $search_term = '%' . $wpdb->esc_like( $filters['search'] ) . '%';
+            $params = array( $search_term, $search_term, $search_term );
+        }
+        
+        if ( ! empty( $filters['produkt'] ) && $filters['produkt'] != 0 ) {
+            $where[] = "produkt = %d";
+            $params[] = intval( $filters['produkt'] );
+        }
+        
+        if ( ! empty( $filters['problem_id'] ) && $filters['problem_id'] != 0 ) {
+            $where[] = "problem_id = %d";
+            $params[] = intval( $filters['problem_id'] );
+        }
+        
+        if ( ! empty( $filters['kategoria'] ) ) {
+            $where[] = "kategoria = %s";
+            $params[] = $filters['kategoria'];
+        }
+        
+        $query = "SELECT * FROM {$table} WHERE " . implode( ' AND ', $where ) . " ORDER BY nazov ASC";
+        
+        if ( ! empty( $params ) ) {
+            $results = $wpdb->get_results( $wpdb->prepare( $query, $params ), OBJECT );
+        } else {
+            $results = $wpdb->get_results( $query, OBJECT );
+        }
+        
         return $results ?: array();
     }
 }

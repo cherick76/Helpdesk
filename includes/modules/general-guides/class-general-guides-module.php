@@ -33,6 +33,9 @@ class GeneralGuidesModule extends BaseModule {
         add_action( 'wp_ajax_helpdesk_get_general_guide', array( $this, 'handle_get_guide' ) );
         add_action( 'wp_ajax_helpdesk_get_general_guides', array( $this, 'handle_get_guides' ) );
         add_action( 'wp_ajax_helpdesk_search_general_guides', array( $this, 'handle_search_guides' ) );
+        add_action( 'wp_ajax_helpdesk_search_guides_by_filters', array( $this, 'handle_search_guides_by_filters' ) );
+        add_action( 'wp_ajax_helpdesk_get_guides_by_product', array( $this, 'handle_get_guides_by_product' ) );
+        add_action( 'wp_ajax_helpdesk_get_guides_by_problem', array( $this, 'handle_get_guides_by_problem' ) );
         add_action( 'wp_ajax_helpdesk_save_guide_link', array( $this, 'handle_save_link' ) );
         add_action( 'wp_ajax_helpdesk_delete_guide_link', array( $this, 'handle_delete_link' ) );
         add_action( 'wp_ajax_helpdesk_get_guide_link', array( $this, 'handle_get_link' ) );
@@ -468,6 +471,70 @@ class GeneralGuidesModule extends BaseModule {
 
         wp_send_json_success( array(
             'category' => $category->get_all_data(),
+        ) );
+    }
+
+    /**
+     * Handle search guides by filters (product, problem, category)
+     */
+    public function handle_search_guides_by_filters() {
+        if ( ! Security::verify_ajax_request( 'nonce' ) ) {
+            return;
+        }
+
+        $filters = array(
+            'search' => isset( $_POST['search'] ) ? sanitize_text_field( $_POST['search'] ) : '',
+            'produkt' => isset( $_POST['produkt'] ) ? absint( $_POST['produkt'] ) : 0,
+            'problem_id' => isset( $_POST['problem_id'] ) ? absint( $_POST['problem_id'] ) : 0,
+            'kategoria' => isset( $_POST['kategoria'] ) ? sanitize_text_field( $_POST['kategoria'] ) : '',
+        );
+
+        $guides = GeneralGuide::search_by_filters( $filters );
+
+        wp_send_json_success( array(
+            'guides' => $guides,
+        ) );
+    }
+
+    /**
+     * Handle get guides by product
+     */
+    public function handle_get_guides_by_product() {
+        if ( ! Security::verify_ajax_request( 'nonce' ) ) {
+            return;
+        }
+
+        $product_id = isset( $_POST['product_id'] ) ? absint( $_POST['product_id'] ) : 0;
+
+        if ( ! $product_id ) {
+            wp_send_json_error( array( 'message' => 'ID produktu chýba' ) );
+        }
+
+        $guides = GeneralGuide::get_by_product( $product_id );
+
+        wp_send_json_success( array(
+            'guides' => $guides,
+        ) );
+    }
+
+    /**
+     * Handle get guides by problem
+     */
+    public function handle_get_guides_by_problem() {
+        if ( ! Security::verify_ajax_request( 'nonce' ) ) {
+            return;
+        }
+
+        $problem_id = isset( $_POST['problem_id'] ) ? absint( $_POST['problem_id'] ) : 0;
+
+        if ( ! $problem_id ) {
+            wp_send_json_error( array( 'message' => 'ID problému chýba' ) );
+        }
+
+        $guides = GeneralGuide::get_by_problem( $problem_id );
+
+        wp_send_json_success( array(
+            'guides' => $guides,
         ) );
     }
 }

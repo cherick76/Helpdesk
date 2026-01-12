@@ -54,6 +54,14 @@ class Migrations {
             update_option( 'helpdesk_db_version', '1.0.29' );
             error_log( 'Migration 1.0.29 completed' );
         }
+
+        // Migration: Add problem_id field to general guides table (2026-01-12)
+        if ( version_compare( $db_version, '1.0.29', '<=' ) ) {
+            error_log( 'Running migration 1.0.30' );
+            self::migrate_add_guide_problem_field();
+            update_option( 'helpdesk_db_version', '1.0.30' );
+            error_log( 'Migration 1.0.30 completed' );
+        }
     }
     
     /**
@@ -274,6 +282,31 @@ class Migrations {
             error_log( 'Added idx_meno_rozsah index to ' . $table );
         } else {
             error_log( 'Index idx_meno_rozsah already exists in ' . $table );
+        }
+    }
+
+    /**
+     * Migrate: Add problem_id field to general guides table
+     * Enables linking guides to specific problems/bug codes
+     */
+    private static function migrate_add_guide_problem_field() {
+        global $wpdb;
+        
+        $table = $wpdb->prefix . 'hd_vseobecne_navody';
+        
+        // Check if problem_id column already exists
+        $columns = $wpdb->get_col( "SHOW COLUMNS FROM $table" );
+        
+        if ( ! in_array( 'problem_id', $columns ) ) {
+            // Add problem_id column for linking to problems/bug codes
+            $wpdb->query( "ALTER TABLE $table ADD COLUMN problem_id INT(11) DEFAULT 0 AFTER produkt" );
+            error_log( 'Added problem_id column to ' . $table );
+            
+            // Add index for performance
+            $wpdb->query( "ALTER TABLE $table ADD KEY idx_problem_id (problem_id)" );
+            error_log( 'Added idx_problem_id index to ' . $table );
+        } else {
+            error_log( 'Column problem_id already exists in ' . $table );
         }
     }
 }

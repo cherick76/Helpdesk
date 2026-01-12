@@ -3,7 +3,7 @@
  * Plugin Name: HelpDesk
  * Plugin URI: https://example.com/helpdesk
  * Description: Modulárny plugin pre správu číselníkov pracovníkov, projektov a chýb v helpdesk prostredí
- * Version: 1.0.27
+ * Version: 1.0.28
  * Author: HelpDesk Team
  * Author URI: https://example.com
  * License: GPL v2 or later
